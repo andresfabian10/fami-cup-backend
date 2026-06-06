@@ -1,0 +1,232 @@
+Project FamiCup {
+  database_type: "PostgreSQL"
+  Note: "MVP backend para FamiCup: apuestas Colombia Especial por dinero y Polla Global por puntos. Reglas fuente: .agents/skills/reglas-apuestas/SKILL.md"
+}
+
+Enum user_role {
+  ADMIN
+  PLAYER
+}
+
+Enum user_status {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+Enum match_status {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+  SUSPENDED
+}
+
+Enum prediction_status {
+  VALID
+  ANNULLED
+  EVALUATED
+}
+
+Enum colombia_bet_status {
+  PENDING_PAYMENT
+  VALID
+  ANNULLED
+  WON
+  LOST
+}
+
+Enum payment_status {
+  PENDING
+  PAID
+  REJECTED
+}
+
+Enum payment_system {
+  COLOMBIA
+  GLOBAL
+}
+
+Table users {
+  id uuid [pk]
+  username varchar(80) [not null, unique]
+  password_hash varchar(120) [not null]
+  full_name varchar(160) [not null]
+  email varchar(160) [unique]
+  phone varchar(40)
+  role user_role [not null]
+  status user_status [not null, default: 'ACTIVE']
+  last_login_at timestamptz
+  must_change_password boolean [not null, default: false]
+  password_changed_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Solo roles ADMIN y PLAYER. La migracion agrega indice parcial para permitir un unico ADMIN."
+}
+
+Table auth_sessions {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  refresh_token_hash varchar(128) [not null, unique]
+  expires_at timestamptz [not null]
+  last_used_at timestamptz [not null]
+  revoked_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table system_parameters {
+  parameter_key varchar(80) [pk]
+  parameter_value varchar(250) [not null]
+  description varchar(500)
+  value_type varchar(30) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table teams {
+  fifa_code varchar(10) [pk]
+  api_football_id int [unique]
+  name varchar(120) [not null]
+  country varchar(120)
+  confederation varchar(80)
+  flag_url varchar(500)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table competitions {
+  id bigint [pk]
+  api_football_league_id int [unique]
+  name varchar(160) [not null]
+  season int [not null]
+  type varchar(80)
+  country varchar(120)
+  logo_url varchar(500)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table matches {
+  id bigint [pk, note: "Fixture id de API-Football cuando viene sincronizado."]
+  competition_id bigint [ref: > competitions.id]
+  stage varchar(120)
+  group_name varchar(80)
+  round_name varchar(120)
+  kickoff_at_utc timestamptz [not null]
+  timezone varchar(80)
+  venue_name varchar(160)
+  venue_city varchar(120)
+  venue_country varchar(120)
+  home_team_code varchar(10) [not null, ref: > teams.fifa_code]
+  away_team_code varchar(10) [not null, ref: > teams.fifa_code]
+  status match_status [not null]
+  api_status_short varchar(10)
+  api_status_long varchar(80)
+  last_synced_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table match_results {
+  id uuid [pk]
+  match_id bigint [not null, unique, ref: > matches.id]
+  home_goals_90 int [not null]
+  away_goals_90 int [not null]
+  winner_90 varchar(20) [not null]
+  source varchar(80) [not null]
+  confirmed_at timestamptz [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table colombia_bets {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  match_id bigint [not null, ref: > matches.id]
+  predicted_home_goals int [not null]
+  predicted_away_goals int [not null]
+  amount_cop decimal(12,2) [not null]
+  status colombia_bet_status [not null]
+  payment_status payment_status [not null]
+  valid boolean [not null]
+  registered_at timestamptz [not null]
+  prize_amount_cop decimal(12,2) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  Note: "Maximo configurable por jugador/partido; solo partidos donde participe Colombia; no pagada antes del cierre queda anulada."
+}
+
+Table global_predictions {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  match_id bigint [not null, ref: > matches.id]
+  predicted_home_goals int [not null]
+  predicted_away_goals int [not null]
+  status prediction_status [not null]
+  points int [not null]
+  exact_hit boolean [not null]
+  winner_hit boolean [not null]
+  registered_at timestamptz [not null]
+  evaluated_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (user_id, match_id) [unique]
+  }
+
+  Note: "Solo 1 pronostico por jugador/partido. Puntos: exacto 5, ganador o empate 2."
+}
+
+Table payments {
+  id uuid [pk]
+  user_id uuid [not null, ref: > users.id]
+  system payment_system [not null]
+  match_id bigint [ref: > matches.id]
+  colombia_bet_id uuid [ref: > colombia_bets.id]
+  amount_cop decimal(12,2) [not null]
+  status payment_status [not null]
+  payment_method varchar(80)
+  reference varchar(160)
+  paid_at timestamptz
+  confirmed_by uuid [ref: > users.id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table ranking_points {
+  user_id uuid [pk, ref: > users.id]
+  total_points int [not null]
+  exact_hits int [not null]
+  winner_hits int [not null]
+  colombia_points int [not null]
+  predicted_matches int [not null]
+  updated_at timestamptz [not null]
+}
+
+Table prizes {
+  id uuid [pk]
+  system payment_system [not null]
+  match_id bigint [ref: > matches.id]
+  ranking_position int
+  user_id uuid [ref: > users.id]
+  amount_cop decimal(12,2) [not null]
+  status varchar(30) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table api_sync_logs {
+  id uuid [pk]
+  sync_type varchar(40) [not null]
+  status varchar(20) [not null]
+  request_path varchar(500)
+  records_processed int [not null]
+  message text
+  started_at timestamptz [not null]
+  finished_at timestamptz
+}

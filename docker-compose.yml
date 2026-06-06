@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: famicup-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: famicup_db
+      POSTGRES_USER: famicup_user
+      POSTGRES_PASSWORD: famicup_dev_password
+      TZ: America/Bogota
+    ports:
+      - "5432:5432"
+    volumes:
+      - famicup_postgres_data:/var/lib/postgresql/data
+    networks:
+      - famicup_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U famicup_user -d famicup_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: famicup-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@famicup.dev
+      PGADMIN_DEFAULT_PASSWORD: famicup_pgadmin_password
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - famicup_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - famicup_network
+
+volumes:
+  famicup_postgres_data:
+  famicup_pgadmin_data:
+
+networks:
+  famicup_network:
+    driver: bridge
