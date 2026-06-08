@@ -27,6 +27,16 @@ public class BettingParametersService {
     public static final String GLOBAL_RESERVE = "GLOBAL_RESERVE_PERCENT";
     public static final String WORLD_CHAMPION_POINTS = "WORLD_CHAMPION_POINTS";
     public static final String WORLD_CHAMPION_LOCK_AT = "WORLD_CHAMPION_LOCK_AT";
+    public static final String ADMIN_WHATSAPP_NUMBER = "ADMIN_WHATSAPP_NUMBER";
+    public static final String FORGOT_PASSWORD_WHATSAPP_MESSAGE = "FORGOT_PASSWORD_WHATSAPP_MESSAGE";
+    public static final String REQUEST_ACCESS_WHATSAPP_MESSAGE = "REQUEST_ACCESS_WHATSAPP_MESSAGE";
+    public static final String FORGOT_PASSWORD_MODAL_TEXT = "FORGOT_PASSWORD_MODAL_TEXT";
+    public static final String REQUEST_ACCESS_MODAL_TEXT = "REQUEST_ACCESS_MODAL_TEXT";
+    public static final String INTERSTITIAL_BANNER_ENABLED = "INTERSTITIAL_BANNER_ENABLED";
+    public static final String INTERSTITIAL_BANNER_IMAGE_URL = "INTERSTITIAL_BANNER_IMAGE_URL";
+    public static final String INTERSTITIAL_BANNER_TARGET_URL = "INTERSTITIAL_BANNER_TARGET_URL";
+    public static final String INTERSTITIAL_BANNER_ALT_TEXT = "INTERSTITIAL_BANNER_ALT_TEXT";
+    public static final String INTERSTITIAL_BANNER_DISMISS_HOURS = "INTERSTITIAL_BANNER_DISMISS_HOURS";
 
     private final ParametroSistemaRepository parameterRepository;
     private final AuditService auditService;
@@ -51,7 +61,17 @@ public class BettingParametersService {
                 getInt(GLOBAL_PRIZE_THIRD),
                 getInt(GLOBAL_RESERVE),
                 getInt(WORLD_CHAMPION_POINTS),
-                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT));
+                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT),
+                getText(ADMIN_WHATSAPP_NUMBER),
+                getText(FORGOT_PASSWORD_WHATSAPP_MESSAGE),
+                getText(REQUEST_ACCESS_WHATSAPP_MESSAGE),
+                getText(FORGOT_PASSWORD_MODAL_TEXT),
+                getText(REQUEST_ACCESS_MODAL_TEXT),
+                getBoolean(INTERSTITIAL_BANNER_ENABLED),
+                getText(INTERSTITIAL_BANNER_IMAGE_URL),
+                getText(INTERSTITIAL_BANNER_TARGET_URL),
+                getText(INTERSTITIAL_BANNER_ALT_TEXT),
+                getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
     }
 
     @CacheEvict(value = "systemParameters", allEntries = true)
@@ -67,6 +87,16 @@ public class BettingParametersService {
         updateIntIfPresent(GLOBAL_PRIZE_SECOND, request.globalPrizeSecondPercent());
         updateIntIfPresent(GLOBAL_PRIZE_THIRD, request.globalPrizeThirdPercent());
         updateIntIfPresent(GLOBAL_RESERVE, request.globalReservePercent());
+        updateTextIfPresent(ADMIN_WHATSAPP_NUMBER, request.adminWhatsappNumber());
+        updateTextIfPresent(FORGOT_PASSWORD_WHATSAPP_MESSAGE, request.forgotPasswordWhatsappMessage());
+        updateTextIfPresent(REQUEST_ACCESS_WHATSAPP_MESSAGE, request.requestAccessWhatsappMessage());
+        updateTextIfPresent(FORGOT_PASSWORD_MODAL_TEXT, request.forgotPasswordModalText());
+        updateTextIfPresent(REQUEST_ACCESS_MODAL_TEXT, request.requestAccessModalText());
+        updateBooleanIfPresent(INTERSTITIAL_BANNER_ENABLED, request.interstitialBannerEnabled());
+        updateTextIfPresent(INTERSTITIAL_BANNER_IMAGE_URL, request.interstitialBannerImageUrl());
+        updateTextIfPresent(INTERSTITIAL_BANNER_TARGET_URL, request.interstitialBannerTargetUrl());
+        updateTextIfPresent(INTERSTITIAL_BANNER_ALT_TEXT, request.interstitialBannerAltText());
+        updateIntIfPresent(INTERSTITIAL_BANNER_DISMISS_HOURS, request.interstitialBannerDismissHours());
         auditService.record(null, "PARAMETERS_UPDATE", "SYSTEM_PARAMETERS", "system", "Actualizo parametros del reglamento", "Parametros guardados");
         return getParametersNoCache();
     }
@@ -85,7 +115,17 @@ public class BettingParametersService {
                 getInt(GLOBAL_PRIZE_THIRD),
                 getInt(GLOBAL_RESERVE),
                 getInt(WORLD_CHAMPION_POINTS),
-                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT));
+                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT),
+                getText(ADMIN_WHATSAPP_NUMBER),
+                getText(FORGOT_PASSWORD_WHATSAPP_MESSAGE),
+                getText(REQUEST_ACCESS_WHATSAPP_MESSAGE),
+                getText(FORGOT_PASSWORD_MODAL_TEXT),
+                getText(REQUEST_ACCESS_MODAL_TEXT),
+                getBoolean(INTERSTITIAL_BANNER_ENABLED),
+                getText(INTERSTITIAL_BANNER_IMAGE_URL),
+                getText(INTERSTITIAL_BANNER_TARGET_URL),
+                getText(INTERSTITIAL_BANNER_ALT_TEXT),
+                getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
     }
 
     public int closingMinutesBeforeMatch() {
@@ -116,6 +156,14 @@ public class BettingParametersService {
         return new BigDecimal(getValue(key));
     }
 
+    private boolean getBoolean(String key) {
+        return Boolean.parseBoolean(getValue(key));
+    }
+
+    private String getText(String key) {
+        return getValue(key);
+    }
+
     private OffsetDateTime getOffsetDateTime(String key) {
         String value = getValue(key);
         return value == null || value.isBlank() ? null : OffsetDateTime.parse(value);
@@ -136,6 +184,18 @@ public class BettingParametersService {
     private void updateDecimalIfPresent(String key, BigDecimal value) {
         if (value != null) {
             updateValue(key, value.toPlainString());
+        }
+    }
+
+    private void updateBooleanIfPresent(String key, Boolean value) {
+        if (value != null) {
+            updateValue(key, value.toString());
+        }
+    }
+
+    private void updateTextIfPresent(String key, String value) {
+        if (value != null) {
+            updateValue(key, value.trim());
         }
     }
 

@@ -2,15 +2,21 @@ package com.famicup.controlador;
 
 import com.famicup.modelo.dto.AuthResponse;
 import com.famicup.modelo.dto.LoginRequest;
+import com.famicup.modelo.dto.ParametrosApuestasResponse;
 import com.famicup.modelo.dto.RefreshTokenRequest;
 import com.famicup.modelo.dto.UsuarioResponse;
 import com.famicup.servicio.AuthService;
+import com.famicup.servicio.BannerImageService;
+import com.famicup.servicio.BettingParametersService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,9 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final BettingParametersService parametersService;
+    private final BannerImageService bannerImageService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, BettingParametersService parametersService, BannerImageService bannerImageService) {
         this.authService = authService;
+        this.parametersService = parametersService;
+        this.bannerImageService = bannerImageService;
     }
 
     @PostMapping("/login")
@@ -60,6 +70,30 @@ public class AuthController {
     })
     public void logout(@Valid @RequestBody RefreshTokenRequest request) {
         authService.logout(request);
+    }
+
+    @GetMapping("/public-parameters")
+    @Operation(summary = "Parametros publicos", description = "Retorna parametros necesarios antes del inicio de sesion, como ayudas de acceso y banner inicial.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Parametros publicos disponibles.")
+    })
+    public ParametrosApuestasResponse publicParameters() {
+        return parametersService.getParameters();
+    }
+
+    @GetMapping("/banner-image")
+    @Operation(summary = "Imagen publica del banner", description = "Sirve la imagen configurada del banner inicial para evitar bloqueos de proveedores externos.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Imagen del banner disponible."),
+            @ApiResponse(responseCode = "404", description = "Banner no configurado."),
+            @ApiResponse(responseCode = "502", description = "No se pudo descargar la imagen externa.")
+    })
+    public ResponseEntity<byte[]> bannerImage() {
+        BannerImageService.BannerImage image = bannerImageService.loadCurrentBannerImage();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .contentType(MediaType.parseMediaType(image.contentType()))
+                .body(image.content());
     }
 
     @GetMapping("/me")

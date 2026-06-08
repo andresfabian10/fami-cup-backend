@@ -12,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,6 +43,14 @@ public class GlobalExceptionHandler {
                 .map(this::formatFieldError)
                 .toList();
         return build(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos.", request, details);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<ErrorResponse> responseStatus(ResponseStatusException exception, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+        HttpStatus responseStatus = status == null ? HttpStatus.INTERNAL_SERVER_ERROR : status;
+        String message = exception.getReason() == null ? responseStatus.getReasonPhrase() : exception.getReason();
+        return build(responseStatus, message, request, List.of());
     }
 
     @ExceptionHandler(Exception.class)

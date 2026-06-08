@@ -15,5 +15,15 @@ public record ParametrosApuestasResponse(
         int globalPrizeThirdPercent,
         int globalReservePercent,
         int worldChampionPoints,
-        OffsetDateTime worldChampionLockAt) {
+        OffsetDateTime worldChampionLockAt,
+        String adminWhatsappNumber,
+        String forgotPasswordWhatsappMessage,
+        String requestAccessWhatsappMessage,
+        String forgotPasswordModalText,
+        String requestAccessModalText,
+        boolean interstitialBannerEnabled,
+        String interstitialBannerImageUrl,
+        String interstitialBannerTargetUrl,
+        String interstitialBannerAltText,
+        int interstitialBannerDismissHours) {
 }

@@ -22,7 +22,7 @@ public class ParametroSistema extends Auditable {
     @Column(name = "parameter_key", length = 80)
     private String parameterKey;
 
-    @Column(name = "parameter_value", nullable = false, length = 250)
+    @Column(name = "parameter_value", nullable = false, columnDefinition = "TEXT")
     private String parameterValue;
 
     @Column(length = 500)
