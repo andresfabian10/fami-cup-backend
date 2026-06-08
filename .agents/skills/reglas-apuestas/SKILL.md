@@ -91,7 +91,7 @@ Operativamente deben ser sistemas independientes, pero visualmente integrados de
 | Qué pasa si nadie acierta en Sistema 1 | El pozo se acumula para el siguiente partido de Colombia. |
 | Cómo se calculan los puntos | Se aplica el sistema equilibrado recomendado: exacto 5 puntos, ganador correcto 2 puntos, empate correcto 2 puntos. |
 | Apuesta principal en partidos de Colombia | Si un jugador registra varias apuestas para un partido de Colombia, debe escoger una como pronóstico principal; esa será la que suma puntos en la Polla Global. Si solo registra una, puede marcarse automáticamente como principal. |
-| Campeón del mundo | Cada jugador puede escoger un único campeón mundial antes del cierre configurado. Acertarlo otorga 10 puntos extra en el ranking general. |
+| Campeón del mundo | Cada jugador puede escoger y editar un único campeón mundial antes del inicio oficial del Mundial; la app usará el cierre configurado para bloquear esta selección. Acertarlo otorga 10 puntos extra en el ranking general. |
 | Empate en puntos al final | Se desempata por más exactos, luego por más aciertos de resultado, luego por mejor desempeño en partidos de Colombia; si persiste, se comparte el premio correspondiente. |
 | Partidos cancelados, aplazados o suspendidos | Se reprograma el cierre cuando exista nueva hora oficial; si el resultado oficial es anulado, la apuesta y el pronóstico del partido también se anulan. |
 | Diferencias entre fase de grupos y eliminación directa | En ambas etapas cuenta el resultado al final del tiempo reglamentario para efectos del MVP. |
@@ -191,7 +191,7 @@ Supuesto: 10 familiares pagan una inscripción de 20.000 COP al sistema 2.
 - El sistema debe marcar una apuesta como válida solo cuando cumpla las reglas y, si aplica, tenga pago confirmado.
 - El sistema debe permitir solo un pronóstico por usuario por partido en el sistema de puntos.
 - El sistema debe permitir marcar una sola apuesta Colombia como principal por usuario y partido para sumar puntos en la Polla Global.
-- El sistema debe permitir guardar un único campeón mundial por jugador antes del cierre configurado.
+- El sistema debe permitir guardar y editar un único campeón mundial por jugador antes del inicio oficial del Mundial, usando el cierre configurado como hora de bloqueo.
 - El sistema debe calcular automáticamente el pozo de cada partido de Colombia.
 - El sistema debe repartir automáticamente el premio entre los acertantes exactos.
 - El sistema debe acumular puntos y mostrar ranking general actualizado.
