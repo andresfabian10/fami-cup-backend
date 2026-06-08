@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -91,7 +92,7 @@ public class AuthController {
     public ResponseEntity<byte[]> bannerImage() {
         BannerImageService.BannerImage image = bannerImageService.loadCurrentBannerImage();
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(6)).cachePublic())
                 .contentType(MediaType.parseMediaType(image.contentType()))
                 .body(image.content());
     }

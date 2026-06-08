@@ -23,9 +23,11 @@ public class BannerImageService {
 
     private static final Pattern DRIVE_FILE_PATH_PATTERN = Pattern.compile("/file/d/([^/]+)", Pattern.CASE_INSENSITIVE);
     private static final int MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+    private static final Duration REMOTE_CACHE_TTL = Duration.ofMinutes(30);
 
     private final BettingParametersService parametersService;
     private final HttpClient httpClient;
+    private volatile CachedBannerImage cachedBannerImage;
 
     public BannerImageService(BettingParametersService parametersService) {
         this.parametersService = parametersService;
@@ -43,6 +45,19 @@ public class BannerImageService {
         }
 
         URI imageUri = resolveImageUri(parameters.interstitialBannerImageUrl());
+        String cacheKey = imageUri.toString();
+        long now = System.nanoTime();
+        CachedBannerImage cachedImage = cachedBannerImage;
+        if (cachedImage != null && cachedImage.cacheKey().equals(cacheKey) && cachedImage.expiresAtNanos() > now) {
+            return cachedImage.image();
+        }
+
+        BannerImage image = downloadBannerImage(imageUri);
+        cachedBannerImage = new CachedBannerImage(cacheKey, image, now + REMOTE_CACHE_TTL.toNanos());
+        return image;
+    }
+
+    private BannerImage downloadBannerImage(URI imageUri) {
         HttpRequest request = HttpRequest.newBuilder(imageUri)
                 .timeout(Duration.ofSeconds(12))
                 .header("Accept", "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8")
@@ -144,5 +159,8 @@ public class BannerImageService {
     }
 
     public record BannerImage(byte[] content, String contentType) {
+    }
+
+    private record CachedBannerImage(String cacheKey, BannerImage image, long expiresAtNanos) {
     }
 }
