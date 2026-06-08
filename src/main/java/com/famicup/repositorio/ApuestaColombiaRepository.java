@@ -32,5 +32,7 @@ public interface ApuestaColombiaRepository extends JpaRepository<ApuestaColombia
 
     List<ApuestaColombia> findByUserOrderByRegisteredAtDesc(Usuario user);
 
+    List<ApuestaColombia> findAllByOrderByRegisteredAtDesc();
+
     List<ApuestaColombia> findByMatchAndStatus(Partido match, EstadoApuestaColombia status);
 }
