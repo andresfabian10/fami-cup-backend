@@ -98,9 +98,9 @@ class AdminPredictionsServiceTest {
         return new ParametrosApuestasResponse(
                 BigDecimal.valueOf(5000),
                 3,
-                BigDecimal.valueOf(20000),
+                BigDecimal.valueOf(60000),
                 10,
-                5,
+                0,
                 2,
                 50,
                 30,

@@ -34,14 +34,14 @@ class BettingParametersServiceTest {
         service = new BettingParametersService(repository, auditService);
         put(BettingParametersService.COLOMBIA_BET_AMOUNT, "5000");
         put(BettingParametersService.COLOMBIA_MAX_BETS, "3");
-        put(BettingParametersService.GLOBAL_REGISTRATION_AMOUNT, "20000");
+        put(BettingParametersService.GLOBAL_REGISTRATION_AMOUNT, "60000");
         put(BettingParametersService.CLOSING_MINUTES, "10");
         put(BettingParametersService.GLOBAL_EXACT_POINTS, "5");
         put(BettingParametersService.GLOBAL_WINNER_POINTS, "2");
         put(BettingParametersService.GLOBAL_PRIZE_FIRST, "50");
         put(BettingParametersService.GLOBAL_PRIZE_SECOND, "30");
         put(BettingParametersService.GLOBAL_PRIZE_THIRD, "20");
-        put(BettingParametersService.GLOBAL_RESERVE, "5");
+        put(BettingParametersService.GLOBAL_RESERVE, "0");
         put(BettingParametersService.WORLD_CHAMPION_POINTS, "10");
         put(BettingParametersService.WORLD_CHAMPION_LOCK_AT, "2026-06-11T00:00:00Z");
         put(BettingParametersService.ADMIN_WHATSAPP_NUMBER, "573163353115");
@@ -62,9 +62,11 @@ class BettingParametersServiceTest {
         var response = service.getParametersNoCache();
 
         assertThat(response.colombiaBetAmount()).isEqualByComparingTo("5000");
+        assertThat(response.globalRegistrationAmount()).isEqualByComparingTo("60000");
         assertThat(response.colombiaMaxBetsPerMatch()).isEqualTo(3);
         assertThat(response.closingMinutesBeforeMatch()).isEqualTo(10);
         assertThat(response.exactPoints()).isEqualTo(5);
+        assertThat(response.globalReservePercent()).isEqualTo(0);
     }
 
     @Test

@@ -32,14 +32,14 @@ Documento preparado para uso interno y para compartir con la familia.
 - Permitir muchas apuestas por una sola persona puede percibirse como injusto si no hay límite.
 - Si en el sistema de dinero solo gana el marcador exacto, muchas personas pueden quedarse sin premio con frecuencia.
 - Si se mezcla el dinero del sistema 1 con el sistema 2, la administración se vuelve confusa.
-- Sin reglas explícitas para alargue, penales, aplazamientos y empates, aparecerán discusiones.
+- Si no se comunica bien la regla de 90 minutos, alargue y penales, pueden aparecer discusiones.
 
 ### Vacíos en las reglas
 
-- Definir si el sistema 2 tendrá inscripción fija general.
+- Mantener visible que el sistema 2 tiene inscripción fija general de 60.000 COP.
 - Definir qué pasa si una persona registró una apuesta pero no pagó a tiempo.
 - Definir cuántas apuestas máximas se permiten por persona en partidos de Colombia.
-- Definir qué resultado cuenta en eliminación directa: 90 minutos, alargue o penales.
+- Comunicar claramente que en eliminación directa solo cuentan los 90 minutos más reposición.
 - Definir cómo se resuelven los empates en el ranking final.
 - Definir cómo actuar ante partidos aplazados, suspendidos o cancelados.
 
@@ -48,7 +48,7 @@ Documento preparado para uso interno y para compartir con la familia.
 - Confusión por horarios si no existe una única hora oficial de cierre.
 - Errores manuales al gestionar pagos, apuestas y resultados desde varias herramientas.
 - Reclamos del tipo "yo sí envié antes" o "ya te había pagado".
-- Interpretaciones distintas sobre si cuentan penales o alargue.
+- Reclamos si alguien interpreta que alargue o penales cambian puntos, aunque el reglamento indique que no cuentan.
 - Confusión con futuros cruces de Colombia si se muestran antes de estar oficialmente confirmados.
 
 ---
@@ -78,14 +78,14 @@ Operativamente deben ser sistemas independientes, pero visualmente integrados de
 | ----- | ----- |
 | Quién puede participar | Solo familiares invitados y registrados en la app o en la lista oficial del juego. |
 | Costo por apuesta en Sistema 1 | Cada apuesta en un partido de Colombia cuesta 5.000 COP. |
-| Inscripción Sistema 2 | Se recomienda una inscripción única inicial para participar en la quiniela general por puntos. |
+| Inscripción Sistema 2 | La inscripción única para participar en la quiniela general por puntos es de 60.000 COP. De ese valor, 30.000 COP son aporte fijo de mantenimiento de la app y 30.000 COP entran al pozo premiable global. |
 | Cantidad de apuestas en Sistema 1 | Se permiten varias apuestas por persona en un mismo partido de Colombia, con recomendación de máximo 3 apuestas por usuario por partido. |
 | Cantidad de apuestas en Sistema 2 | Solo se permite 1 pronóstico por usuario por partido. |
 | Hora de cierre | Todas las apuestas y pronósticos se cierran 10 minutos antes de la hora oficial de inicio del partido. |
 | Qué pasa si no ha pagado | En el sistema 1, una apuesta no pagada antes del cierre queda anulada. |
 | Cómo se valida una apuesta | Debe quedar registrada con usuario, partido, marcador, hora de registro y estado de pago, si aplica. |
 | Qué resultados cuentan | Cuenta el marcador oficial al final del tiempo reglamentario: 90 minutos más reposición. |
-| Alargue y penales | No cuentan para el marcador apostable en el MVP. |
+| Alargue y penales | No cuentan para marcador, ganador ni puntos del MVP. Si un partido de eliminación directa llega a penales, para la Polla Global sigue contando el resultado de los 90 minutos más reposición; no se otorgan puntos por acertar el ganador de la tanda de penales. |
 | Cómo se define un ganador en Sistema 1 | Gana quien acierte el marcador exacto del partido de Colombia. |
 | Cómo se reparte el dinero | El pozo del partido se reparte en partes iguales entre todos los acertantes exactos. |
 | Qué pasa si nadie acierta en Sistema 1 | El pozo se acumula para el siguiente partido de Colombia. |
@@ -119,13 +119,17 @@ Se evaluaron tres alternativas para el ranking general por puntos:
 - Cualquier otro caso = **0 puntos**
 - Campeón mundial acertado = **10 puntos extra**
 
+**Regla para eliminación directa:** si un partido se define en alargue o penales, esos goles o esa tanda no modifican el puntaje de la Polla Global. Si el partido terminó empatado al cierre de los 90 minutos más reposición, cuenta como empate para puntos, aunque después haya un ganador por penales.
+
 ---
 
 ## 5. Premios del sistema 2 para los 3 primeros puestos
 
-- Inscripción sugerida para el MVP: **20.000 COP** por participante.
+- Inscripción del MVP: **60.000 COP** por participante.
+- Aporte fijo de mantenimiento de la app: **30.000 COP** por participante.
+- Aporte al pozo premiable global: **30.000 COP** por participante.
 - Separar completamente el dinero del sistema 1 y del sistema 2.
-- Reservar un **5% del pozo** del sistema 2 para redondeos, imprevistos o premio simbólico adicional.
+- Los premios del sistema 2 se calculan únicamente sobre el pozo premiable global, es decir, después de descontar el aporte de mantenimiento de la app.
 
 | Modelo | 1ro | 2do | 3ro | Ventaja | Cuándo conviene |
 | ----- | :---: | :---: | :---: | ----- | ----- |
@@ -172,12 +176,12 @@ Ranking final del ejemplo: 1) Emilio con 12 puntos, 2) Andrés con 10, 3) Jhon c
 
 ### 6.3 Ejemplo de premios del top 3
 
-Supuesto: 10 familiares pagan una inscripción de 20.000 COP al sistema 2.
+Supuesto: 10 familiares pagan una inscripción de 60.000 COP al sistema 2.
 
-- Pozo total: 200.000 COP
-- Reserva del 5%: 10.000 COP
-- Pozo repartible: 190.000 COP
-- Modelo balanceado: 1ro **95.000 COP**, 2do **57.000 COP**, 3ro **38.000 COP**
+- Recaudo total: 600.000 COP
+- Aporte de mantenimiento app: 300.000 COP
+- Pozo premiable global: 300.000 COP
+- Modelo balanceado: 1ro **150.000 COP**, 2do **90.000 COP**, 3ro **60.000 COP**
 
 ---
 
@@ -247,11 +251,12 @@ Supuesto: 10 familiares pagan una inscripción de 20.000 COP al sistema 2.
 - Cierre **10 minutos** antes del inicio del partido.
 - Solo gana el marcador exacto en el sistema 1.
 - Si nadie acierta en el sistema 1, el pozo pasa al siguiente partido de Colombia.
-- Sistema 2 con inscripción única de **20.000 COP**.
+- Sistema 2 con inscripción única de **60.000 COP**.
+- De cada inscripción del sistema 2, **30.000 COP** son aporte de mantenimiento de la app y **30.000 COP** entran al pozo premiable global.
 - Sistema equilibrado de puntos: exacto 5, ganador 2, empate 2.
 - Los partidos de Colombia suman dinero y puntos al mismo tiempo.
-- Premios del sistema 2: **50% / 30% / 20%** para el top 3.
-- No contar alargue ni penales en el MVP.
+- Premios del sistema 2 sobre el pozo premiable global: **50% / 30% / 20%** para el top 3.
+- No contar alargue ni penales en el MVP; tampoco se dan puntos por ganador de tanda de penales.
 - Mantener separados los fondos del sistema 1 y del sistema 2.
 
 ---
@@ -271,7 +276,8 @@ Familia, para el Mundial 2026 vamos a jugar con 2 modalidades en la app:
 - Apuesta no pagada antes del cierre = no válida
 
 2) Quiniela general por puntos
-- Inscripción única: 20.000 COP
+- Inscripción única: 60.000 COP
+- De esa inscripción, 30.000 COP son para mantenimiento de la app y 30.000 COP entran al pozo de premios global.
 - Se pronostica 1 marcador por partido durante todo el Mundial
 - Puntaje: Exacto 5, ganador correcto 2, empate correcto 2
 - Los partidos de Colombia también suman en esta tabla
@@ -281,10 +287,12 @@ Premios quiniela general:
 - 1ro: 50%
 - 2do: 30%
 - 3ro: 20%
+Estos porcentajes se aplican sobre el pozo premiable global, después de descontar el mantenimiento de la app.
 
 Importante:
 - Cuenta el marcador al final de los 90 minutos + adición
 - No cuentan alargue ni penales
+- Si un partido se va a penales, no hay puntos por acertar el ganador de la tanda; cuenta el marcador de los 90 minutos + adición.
 - La app será la única válida para hora de cierre, apuestas y resultados
 ```
 
