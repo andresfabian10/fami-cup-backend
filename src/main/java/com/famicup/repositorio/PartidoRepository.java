@@ -19,6 +19,14 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
 
     @Query("""
             select p from Partido p
+            join fetch p.homeTeam
+            join fetch p.awayTeam
+            order by p.kickoffAtUtc asc
+            """)
+    List<Partido> findAllWithTeamsOrderByKickoffAtUtcAsc();
+
+    @Query("""
+            select p from Partido p
             join fetch p.homeTeam h
             join fetch p.awayTeam a
             where (h.fifaCode = 'COL' or a.fifaCode = 'COL' or h.apiFootballId = :colombiaTeamId or a.apiFootballId = :colombiaTeamId)
