@@ -15,7 +15,16 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
 
     List<Partido> findByStatusInAndKickoffAtUtcAfterOrderByKickoffAtUtcAsc(Collection<EstadoPartido> statuses, OffsetDateTime from);
 
-    List<Partido> findByStatusInOrKickoffAtUtcBetween(Collection<EstadoPartido> statuses, OffsetDateTime from, OffsetDateTime to);
+    @Query("""
+            select p from Partido p
+            where p.status = :liveStatus
+               or p.kickoffAtUtc between :from and :to
+            order by p.kickoffAtUtc asc
+            """)
+    List<Partido> findResultSyncCandidates(
+            @Param("liveStatus") EstadoPartido liveStatus,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to);
 
     @Query("""
             select p from Partido p
