@@ -126,6 +126,16 @@ class UsuarioServiceTest {
                 20,
                 5,
                 10,
-                java.time.OffsetDateTime.parse("2026-06-11T00:00:00Z"));
+                java.time.OffsetDateTime.parse("2026-06-11T00:00:00Z"),
+                "573163353115",
+                "Hola",
+                "Acceso",
+                "Recuperar",
+                "Solicitar",
+                false,
+                "",
+                "",
+                "Banner",
+                12);
     }
 }

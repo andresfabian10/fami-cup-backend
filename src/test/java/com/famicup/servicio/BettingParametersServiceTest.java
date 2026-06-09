@@ -44,6 +44,16 @@ class BettingParametersServiceTest {
         put(BettingParametersService.GLOBAL_RESERVE, "5");
         put(BettingParametersService.WORLD_CHAMPION_POINTS, "10");
         put(BettingParametersService.WORLD_CHAMPION_LOCK_AT, "2026-06-11T00:00:00Z");
+        put(BettingParametersService.ADMIN_WHATSAPP_NUMBER, "573163353115");
+        put(BettingParametersService.FORGOT_PASSWORD_WHATSAPP_MESSAGE, "Hola");
+        put(BettingParametersService.REQUEST_ACCESS_WHATSAPP_MESSAGE, "Acceso");
+        put(BettingParametersService.FORGOT_PASSWORD_MODAL_TEXT, "Recuperar");
+        put(BettingParametersService.REQUEST_ACCESS_MODAL_TEXT, "Solicitar");
+        put(BettingParametersService.INTERSTITIAL_BANNER_ENABLED, "false");
+        put(BettingParametersService.INTERSTITIAL_BANNER_IMAGE_URL, "");
+        put(BettingParametersService.INTERSTITIAL_BANNER_TARGET_URL, "");
+        put(BettingParametersService.INTERSTITIAL_BANNER_ALT_TEXT, "Banner");
+        put(BettingParametersService.INTERSTITIAL_BANNER_DISMISS_HOURS, "12");
         when(repository.findById(anyString())).thenAnswer(invocation -> Optional.ofNullable(parameters.get(invocation.getArgument(0))));
     }
 
@@ -62,6 +72,16 @@ class BettingParametersServiceTest {
         service.updateParameters(new ActualizarParametrosRequest(
                 BigDecimal.valueOf(7000),
                 4,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

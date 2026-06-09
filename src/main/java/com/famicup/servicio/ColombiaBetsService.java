@@ -79,7 +79,7 @@ public class ColombiaBetsService {
         }
 
         if (hasRequestedPrincipal(request.bets())) {
-            clearPrincipal(existingBets);
+            clearPrincipalForUserAndMatch(user, match, existingBets);
         }
 
         List<ApuestaColombia> savedBets = new ArrayList<>();
@@ -124,13 +124,13 @@ public class ColombiaBetsService {
                 || bet.getStatus() == EstadoApuestaColombia.LOST) {
             throw new ReglaNegocioException("Esta apuesta ya no esta disponible para edicion.");
         }
-        validateUniqueScore(request.homeGoals(), request.awayGoals(), betRepository.findByUserAndMatch(user, bet.getMatch()), bet.getId());
+        List<ApuestaColombia> allBets = betRepository.findByUserAndMatch(user, bet.getMatch());
+        validateUniqueScore(request.homeGoals(), request.awayGoals(), allBets, bet.getId());
 
         bet.setPredictedHomeGoals(request.homeGoals());
         bet.setPredictedAwayGoals(request.awayGoals());
         if (Boolean.TRUE.equals(request.principalGlobalPrediction())) {
-            List<ApuestaColombia> allBets = betRepository.findByUserAndMatch(user, bet.getMatch());
-            clearPrincipal(allBets);
+            clearPrincipalForUserAndMatch(user, bet.getMatch(), allBets);
             bet.setPrincipalGlobalPrediction(true);
         }
         normalizePrincipal(user, bet.getMatch());
@@ -168,15 +168,18 @@ public class ColombiaBetsService {
                 .filter(currentBet -> !currentBet.getId().equals(bet.getId()))
                 .toList();
 
-        pagoRepository.findByColombiaBet(bet).ifPresent(pagoRepository::delete);
-        betRepository.delete(bet);
         if (remainingBets.isEmpty()) {
+            pagoRepository.findByColombiaBet(bet).ifPresent(pagoRepository::delete);
+            betRepository.delete(bet);
             predictionRepository.findByUserAndMatch(user, match).ifPresent(predictionRepository::delete);
         } else {
             if (wasPrincipal || remainingBets.stream().noneMatch(ApuestaColombia::isPrincipalGlobalPrediction)) {
-                remainingBets.forEach(currentBet -> currentBet.setPrincipalGlobalPrediction(false));
+                clearPrincipalForUserAndMatch(user, match, remainingBets);
+                bet.setPrincipalGlobalPrediction(false);
                 remainingBets.get(0).setPrincipalGlobalPrediction(true);
             }
+            pagoRepository.findByColombiaBet(bet).ifPresent(pagoRepository::delete);
+            betRepository.delete(bet);
             syncPrincipalGlobalPrediction(user, match, OffsetDateTime.now(ZoneOffset.UTC));
         }
         auditService.record(
@@ -268,6 +271,11 @@ public class ColombiaBetsService {
 
     private void clearPrincipal(List<ApuestaColombia> bets) {
         bets.forEach(bet -> bet.setPrincipalGlobalPrediction(false));
+    }
+
+    private void clearPrincipalForUserAndMatch(Usuario user, Partido match, List<ApuestaColombia> managedBets) {
+        betRepository.clearPrincipalForUserAndMatch(user, match);
+        clearPrincipal(managedBets);
     }
 
     private void normalizePrincipal(Usuario user, Partido match) {

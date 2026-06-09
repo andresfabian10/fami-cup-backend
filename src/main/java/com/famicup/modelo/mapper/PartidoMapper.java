@@ -7,6 +7,7 @@ import com.famicup.modelo.entidad.Equipo;
 import com.famicup.modelo.entidad.Partido;
 import com.famicup.modelo.entidad.ResultadoPartido;
 import com.famicup.repositorio.ResultadoPartidoRepository;
+import com.famicup.util.NombreEquipoUtil;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -22,7 +23,13 @@ public class PartidoMapper {
         if (team == null) {
             return null;
         }
-        return new EquipoDto(team.getFifaCode(), team.getApiFootballId(), team.getName(), team.getCountry(), team.getFlagUrl());
+        return new EquipoDto(
+                team.getFifaCode(),
+                team.getApiFootballId(),
+                team.getName(),
+                NombreEquipoUtil.displayName(team.getName()),
+                team.getCountry(),
+                team.getFlagUrl());
     }
 
     public PartidoDto toDto(Partido match) {

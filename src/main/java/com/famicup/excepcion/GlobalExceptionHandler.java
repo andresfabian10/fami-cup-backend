@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,6 +44,23 @@ public class GlobalExceptionHandler {
                 .map(this::formatFieldError)
                 .toList();
         return build(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos.", request, details);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<ErrorResponse> responseStatus(ResponseStatusException exception, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+        HttpStatus responseStatus = status == null ? HttpStatus.INTERNAL_SERVER_ERROR : status;
+        String message = exception.getReason() == null ? responseStatus.getReasonPhrase() : exception.getReason();
+        return build(responseStatus, message, request, List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ErrorResponse> dataIntegrity(DataIntegrityViolationException exception, HttpServletRequest request) {
+        return build(
+                HttpStatus.BAD_REQUEST,
+                "La solicitud no cumple las restricciones del juego. Revisa que no haya apuestas duplicadas o mas de una principal.",
+                request,
+                List.of());
     }
 
     @ExceptionHandler(Exception.class)

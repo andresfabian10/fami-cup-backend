@@ -5,6 +5,7 @@ import com.famicup.modelo.dto.ActualizarUsuarioRequest;
 import com.famicup.modelo.dto.AuditEventResponse;
 import com.famicup.modelo.dto.AdminNotificationResponse;
 import com.famicup.modelo.dto.AdminDashboardResponse;
+import com.famicup.modelo.dto.AdminPredictionsResponse;
 import com.famicup.modelo.dto.CrearUsuarioRequest;
 import com.famicup.modelo.dto.PagoResponse;
 import com.famicup.modelo.dto.ParametrosApuestasResponse;
@@ -14,6 +15,7 @@ import com.famicup.modelo.dto.UsuarioResponse;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.servicio.ApiFootballSyncService;
 import com.famicup.servicio.AdminNotificationService;
+import com.famicup.servicio.AdminPredictionsService;
 import com.famicup.servicio.AuditExportService;
 import com.famicup.servicio.AuditService;
 import com.famicup.servicio.BettingParametersService;
@@ -60,6 +62,7 @@ public class AdminController {
     private final BettingParametersService parametersService;
     private final ApiFootballSyncService syncService;
     private final AdminNotificationService notificationService;
+    private final AdminPredictionsService predictionsService;
     private final WorldChampionPredictionService championPredictionService;
     private final AuditService auditService;
     private final AuditExportService auditExportService;
@@ -71,6 +74,7 @@ public class AdminController {
             BettingParametersService parametersService,
             ApiFootballSyncService syncService,
             AdminNotificationService notificationService,
+            AdminPredictionsService predictionsService,
             WorldChampionPredictionService championPredictionService,
             AuditService auditService,
             AuditExportService auditExportService) {
@@ -80,6 +84,7 @@ public class AdminController {
         this.parametersService = parametersService;
         this.syncService = syncService;
         this.notificationService = notificationService;
+        this.predictionsService = predictionsService;
         this.championPredictionService = championPredictionService;
         this.auditService = auditService;
         this.auditExportService = auditExportService;
@@ -170,6 +175,12 @@ public class AdminController {
     @Operation(summary = "Pronosticos de campeon mundial", description = "Lista la seleccion de campeon mundial hecha por jugadores. Rol permitido: ADMIN.")
     public List<PronosticoCampeonMundialResponse> worldChampionPredictions() {
         return championPredictionService.listAll();
+    }
+
+    @GetMapping("/predictions")
+    @Operation(summary = "Seguimiento de pronosticos", description = "Lista y resume apuestas Colombia, pronosticos globales y campeones mundiales registrados por jugadores. Rol permitido: ADMIN.")
+    public AdminPredictionsResponse predictions() {
+        return predictionsService.listPredictions();
     }
 
     @GetMapping("/audit/entries")

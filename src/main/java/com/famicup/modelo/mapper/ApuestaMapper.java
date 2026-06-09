@@ -5,6 +5,7 @@ import com.famicup.modelo.dto.PronosticoGlobalResponse;
 import com.famicup.modelo.entidad.ApuestaColombia;
 import com.famicup.modelo.entidad.Partido;
 import com.famicup.modelo.entidad.PronosticoGlobal;
+import com.famicup.util.NombreEquipoUtil;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,7 +19,9 @@ public class ApuestaMapper {
 
     public ApuestaColombiaResponse toColombiaResponse(ApuestaColombia bet) {
         Partido match = bet.getMatch();
-        String label = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
+        String label = NombreEquipoUtil.displayName(match.getHomeTeam().getName())
+                + " vs "
+                + NombreEquipoUtil.displayName(match.getAwayTeam().getName());
         return new ApuestaColombiaResponse(
                 bet.getId(),
                 match.getId(),

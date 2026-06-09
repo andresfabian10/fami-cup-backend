@@ -1,6 +1,7 @@
 package com.famicup.servicio;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -160,6 +161,30 @@ class ColombiaBetsServiceTest {
     }
 
     @Test
+    void marksSelectedBetAsOnlyPrincipalBeforeSyncingGlobalPrediction() {
+        Usuario user = user();
+        Partido match = match("COL", "ARG");
+        ApuestaColombia selectedBet = bet(user, match, 1, 0);
+        ApuestaColombia previousPrincipal = bet(user, match, 2, 1);
+        UUID betId = UUID.randomUUID();
+        selectedBet.setId(betId);
+        previousPrincipal.setId(UUID.randomUUID());
+        previousPrincipal.setPrincipalGlobalPrediction(true);
+        when(betRepository.findById(betId)).thenReturn(Optional.of(selectedBet));
+        when(partidoService.isClosedForBetting(any(), any())).thenReturn(false);
+        when(partidoService.isColombiaMatch(match)).thenReturn(true);
+        when(betRepository.findByUserAndMatch(user, match)).thenReturn(List.of(selectedBet, previousPrincipal));
+        when(betRepository.findFirstByUserAndMatchAndPrincipalGlobalPredictionTrue(user, match)).thenReturn(Optional.of(selectedBet));
+
+        service.updateBet(user, betId, new ActualizarApuestaColombiaRequest(1, 0, true));
+
+        assertThat(selectedBet.isPrincipalGlobalPrediction()).isTrue();
+        assertThat(previousPrincipal.isPrincipalGlobalPrediction()).isFalse();
+        verify(betRepository).clearPrincipalForUserAndMatch(user, match);
+        verify(predictionRepository).save(any());
+    }
+
+    @Test
     void rejectsEditionWithDuplicatedScore() {
         Usuario user = user();
         Partido match = match("COL", "ARG");
@@ -209,6 +234,31 @@ class ColombiaBetsServiceTest {
         service.deleteBet(user, betId);
 
         verify(betRepository).delete(bet);
+    }
+
+    @Test
+    void promotesAnotherBetWhenDeletingCurrentPrincipal() {
+        Usuario user = user();
+        Partido match = match("COL", "ARG");
+        ApuestaColombia principalBet = bet(user, match, 1, 0);
+        ApuestaColombia remainingBet = bet(user, match, 2, 1);
+        UUID betId = UUID.randomUUID();
+        principalBet.setId(betId);
+        principalBet.setPrincipalGlobalPrediction(true);
+        remainingBet.setId(UUID.randomUUID());
+        when(betRepository.findById(betId)).thenReturn(Optional.of(principalBet));
+        when(partidoService.isColombiaMatch(match)).thenReturn(true);
+        when(partidoService.isClosedForBetting(any(), any())).thenReturn(false);
+        when(betRepository.findByUserAndMatch(user, match)).thenReturn(List.of(principalBet, remainingBet));
+        when(betRepository.findFirstByUserAndMatchAndPrincipalGlobalPredictionTrue(user, match)).thenReturn(Optional.of(remainingBet));
+
+        service.deleteBet(user, betId);
+
+        assertThat(principalBet.isPrincipalGlobalPrediction()).isFalse();
+        assertThat(remainingBet.isPrincipalGlobalPrediction()).isTrue();
+        verify(betRepository).clearPrincipalForUserAndMatch(user, match);
+        verify(betRepository).delete(principalBet);
+        verify(predictionRepository).save(any());
     }
 
     @Test
