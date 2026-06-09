@@ -3,6 +3,7 @@ package com.famicup.servicio;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.famicup.cliente.ApiFootballClient;
 import com.famicup.configuracion.ApiFootballProperties;
+import com.famicup.configuracion.SchedulerProperties;
 import com.famicup.modelo.dto.SyncResponse;
 import com.famicup.modelo.entidad.ApiSyncLog;
 import com.famicup.modelo.entidad.Competicion;
@@ -32,6 +33,7 @@ public class ApiFootballSyncService {
 
     private final ApiFootballClient apiFootballClient;
     private final ApiFootballProperties properties;
+    private final SchedulerProperties schedulerProperties;
     private final EquipoRepository equipoRepository;
     private final CompeticionRepository competicionRepository;
     private final PartidoRepository partidoRepository;
@@ -43,6 +45,7 @@ public class ApiFootballSyncService {
     public ApiFootballSyncService(
             ApiFootballClient apiFootballClient,
             ApiFootballProperties properties,
+            SchedulerProperties schedulerProperties,
             EquipoRepository equipoRepository,
             CompeticionRepository competicionRepository,
             PartidoRepository partidoRepository,
@@ -52,6 +55,7 @@ public class ApiFootballSyncService {
             AuditService auditService) {
         this.apiFootballClient = apiFootballClient;
         this.properties = properties;
+        this.schedulerProperties = schedulerProperties;
         this.equipoRepository = equipoRepository;
         this.competicionRepository = competicionRepository;
         this.partidoRepository = partidoRepository;
@@ -80,9 +84,10 @@ public class ApiFootballSyncService {
     public SyncResponse syncResults() {
         OffsetDateTime started = OffsetDateTime.now(ZoneOffset.UTC);
         try {
-            List<Partido> candidates = partidoRepository.findByStatusInOrKickoffAtUtcBetween(
-                    List.of(EstadoPartido.LIVE, EstadoPartido.SCHEDULED),
-                    started.minusHours(8),
+            int recentResultsHours = Math.max(1, schedulerProperties.recentResultsHours());
+            List<Partido> candidates = partidoRepository.findResultSyncCandidates(
+                    EstadoPartido.LIVE,
+                    started.minusHours(recentResultsHours),
                     started.plusHours(1));
             int processed = 0;
             for (Partido candidate : candidates) {

@@ -14,6 +14,7 @@ import com.famicup.modelo.dto.PlayerDashboardResponse;
 import com.famicup.modelo.dto.PronosticoGlobalResponse;
 import com.famicup.modelo.dto.PronosticoCampeonMundialResponse;
 import com.famicup.modelo.dto.RankingResponse;
+import com.famicup.modelo.dto.ResultsCenterResponse;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.servicio.BettingParametersService;
 import com.famicup.servicio.ColombiaBetsService;
@@ -21,6 +22,7 @@ import com.famicup.servicio.DashboardService;
 import com.famicup.servicio.GlobalPredictionService;
 import com.famicup.servicio.PartidoService;
 import com.famicup.servicio.RankingService;
+import com.famicup.servicio.ResultsCenterService;
 import com.famicup.servicio.UsuarioService;
 import com.famicup.servicio.WorldChampionPredictionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,6 +60,7 @@ public class PlayerController {
     private final RankingService rankingService;
     private final BettingParametersService parametersService;
     private final WorldChampionPredictionService championPredictionService;
+    private final ResultsCenterService resultsCenterService;
 
     public PlayerController(
             UsuarioService usuarioService,
@@ -67,7 +70,8 @@ public class PlayerController {
             GlobalPredictionService globalPredictionService,
             RankingService rankingService,
             BettingParametersService parametersService,
-            WorldChampionPredictionService championPredictionService) {
+            WorldChampionPredictionService championPredictionService,
+            ResultsCenterService resultsCenterService) {
         this.usuarioService = usuarioService;
         this.dashboardService = dashboardService;
         this.partidoService = partidoService;
@@ -76,6 +80,7 @@ public class PlayerController {
         this.rankingService = rankingService;
         this.parametersService = parametersService;
         this.championPredictionService = championPredictionService;
+        this.resultsCenterService = resultsCenterService;
     }
 
     @GetMapping("/dashboard")
@@ -120,6 +125,12 @@ public class PlayerController {
     @Operation(summary = "Partidos para pronostico global", description = "Lista partidos futuros guardados en PostgreSQL para registrar pronosticos de la Polla Global. Rol permitido: PLAYER.")
     public List<PartidoDto> matches() {
         return partidoService.upcomingMatches();
+    }
+
+    @GetMapping("/results-center")
+    @Operation(summary = "Centro de resultados", description = "Consulta partidos y resultados sincronizados desde PostgreSQL agrupados por fase o grupo. No consulta API-Football en requests del jugador.")
+    public ResultsCenterResponse resultsCenter(Authentication authentication) {
+        return resultsCenterService.getResultsCenter(currentUser(authentication));
     }
 
     @GetMapping("/teams")

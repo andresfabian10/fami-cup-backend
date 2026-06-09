@@ -20,7 +20,7 @@ public final class NombreEquipoUtil {
             Map.entry("costarica", "Costa Rica"),
             Map.entry("cotedivoire", "Costa de Marfil"),
             Map.entry("croatia", "Croacia"),
-            Map.entry("czechrepublic", "Republica Checa"),
+            Map.entry("czechrepublic", "República Checa"),
             Map.entry("denmark", "Dinamarca"),
             Map.entry("drcongo", "RD Congo"),
             Map.entry("ecuador", "Ecuador"),
