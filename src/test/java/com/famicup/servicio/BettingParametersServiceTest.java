@@ -1,9 +1,11 @@
 package com.famicup.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import com.famicup.excepcion.ReglaNegocioException;
 import com.famicup.modelo.dto.ActualizarParametrosRequest;
 import com.famicup.modelo.entidad.ParametroSistema;
 import com.famicup.modelo.enumeracion.TipoValorParametro;
@@ -74,7 +76,7 @@ class BettingParametersServiceTest {
     }
 
     @Test
-    void updatesOnlyProvidedParameters() {
+    void keepsColombiaRulesFixedWhenUpdatingParameters() {
         service.updateParameters(new ActualizarParametrosRequest(
                 BigDecimal.valueOf(7000),
                 4,
@@ -100,9 +102,83 @@ class BettingParametersServiceTest {
                 null,
                 null));
 
-        assertThat(parameters.get(BettingParametersService.COLOMBIA_BET_AMOUNT).getParameterValue()).isEqualTo("7000");
-        assertThat(parameters.get(BettingParametersService.COLOMBIA_MAX_BETS).getParameterValue()).isEqualTo("4");
+        assertThat(parameters.get(BettingParametersService.COLOMBIA_BET_AMOUNT).getParameterValue()).isEqualTo("5000");
+        assertThat(parameters.get(BettingParametersService.COLOMBIA_MAX_BETS).getParameterValue()).isEqualTo("3");
         assertThat(parameters.get(BettingParametersService.CLOSING_MINUTES).getParameterValue()).isEqualTo("10");
+    }
+
+    @Test
+    void returnsOfficialColombiaRulesEvenIfStoredValuesAreStale() {
+        parameters.get(BettingParametersService.COLOMBIA_BET_AMOUNT).setParameterValue("10000");
+        parameters.get(BettingParametersService.COLOMBIA_MAX_BETS).setParameterValue("1");
+
+        var response = service.getParametersNoCache();
+
+        assertThat(response.colombiaBetAmount()).isEqualByComparingTo("5000");
+        assertThat(response.colombiaMaxBetsPerMatch()).isEqualTo(3);
+    }
+
+    @Test
+    void calculatesPrizePoolFromRegistrationMinusOrganizerFee() {
+        var response = service.updateParameters(new ActualizarParametrosRequest(
+                null,
+                null,
+                BigDecimal.valueOf(60000),
+                BigDecimal.valueOf(10000),
+                BigDecimal.valueOf(40000),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null));
+
+        assertThat(response.globalRegistrationAmount()).isEqualByComparingTo("60000");
+        assertThat(response.organizerFeeAmount()).isEqualByComparingTo("10000");
+        assertThat(response.globalPrizePoolAmount()).isEqualByComparingTo("50000");
+        assertThat(parameters.get(BettingParametersService.GLOBAL_PRIZE_POOL_AMOUNT).getParameterValue()).isEqualTo("50000");
+    }
+
+    @Test
+    void rejectsOrganizerFeeGreaterThanRegistrationAmount() {
+        assertThatThrownBy(() -> service.updateParameters(new ActualizarParametrosRequest(
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(60000),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null)))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessageContaining("organizador");
     }
 
     private void put(String key, String value) {

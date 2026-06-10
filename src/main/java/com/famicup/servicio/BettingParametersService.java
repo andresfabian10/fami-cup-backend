@@ -43,6 +43,8 @@ public class BettingParametersService {
     public static final String INTERSTITIAL_BANNER_TARGET_URL = "INTERSTITIAL_BANNER_TARGET_URL";
     public static final String INTERSTITIAL_BANNER_ALT_TEXT = "INTERSTITIAL_BANNER_ALT_TEXT";
     public static final String INTERSTITIAL_BANNER_DISMISS_HOURS = "INTERSTITIAL_BANNER_DISMISS_HOURS";
+    private static final BigDecimal CURRENT_COLOMBIA_BET_AMOUNT = BigDecimal.valueOf(5_000);
+    private static final int CURRENT_COLOMBIA_MAX_BETS = 3;
     private static final ZoneId BOGOTA_ZONE = ZoneId.of("America/Bogota");
 
     private final ParametroSistemaRepository parameterRepository;
@@ -56,31 +58,7 @@ public class BettingParametersService {
     @Cacheable("systemParameters")
     @Transactional(readOnly = true)
     public ParametrosApuestasResponse getParameters() {
-        return new ParametrosApuestasResponse(
-                getDecimal(COLOMBIA_BET_AMOUNT),
-                getInt(COLOMBIA_MAX_BETS),
-                getDecimal(GLOBAL_REGISTRATION_AMOUNT),
-                getDecimal(ORGANIZER_FEE_AMOUNT),
-                getDecimal(GLOBAL_PRIZE_POOL_AMOUNT),
-                getInt(CLOSING_MINUTES),
-                getInt(GLOBAL_EXACT_POINTS),
-                getInt(GLOBAL_WINNER_POINTS),
-                getInt(GLOBAL_PRIZE_FIRST),
-                getInt(GLOBAL_PRIZE_SECOND),
-                getInt(GLOBAL_PRIZE_THIRD),
-                getInt(GLOBAL_RESERVE),
-                getInt(WORLD_CHAMPION_POINTS),
-                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT),
-                getText(ADMIN_WHATSAPP_NUMBER),
-                getText(FORGOT_PASSWORD_WHATSAPP_MESSAGE),
-                getText(REQUEST_ACCESS_WHATSAPP_MESSAGE),
-                getText(FORGOT_PASSWORD_MODAL_TEXT),
-                getText(REQUEST_ACCESS_MODAL_TEXT),
-                getBoolean(INTERSTITIAL_BANNER_ENABLED),
-                getText(INTERSTITIAL_BANNER_IMAGE_URL),
-                getText(INTERSTITIAL_BANNER_TARGET_URL),
-                getText(INTERSTITIAL_BANNER_ALT_TEXT),
-                getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
+        return buildParametersResponse();
     }
 
     @CacheEvict(value = "systemParameters", allEntries = true)
@@ -92,11 +70,18 @@ public class BettingParametersService {
     @CacheEvict(value = "systemParameters", allEntries = true)
     @Transactional
     public ParametrosApuestasResponse updateParameters(ActualizarParametrosRequest request, Usuario admin) {
-        updateDecimalIfPresent(COLOMBIA_BET_AMOUNT, request.colombiaBetAmount());
-        updateIntIfPresent(COLOMBIA_MAX_BETS, request.colombiaMaxBetsPerMatch());
+        BigDecimal nextGlobalRegistrationAmount = request.globalRegistrationAmount() == null
+                ? getDecimal(GLOBAL_REGISTRATION_AMOUNT)
+                : request.globalRegistrationAmount();
+        BigDecimal nextOrganizerFeeAmount = request.organizerFeeAmount() == null
+                ? getDecimal(ORGANIZER_FEE_AMOUNT)
+                : request.organizerFeeAmount();
+        validateGlobalEconomicSplit(nextGlobalRegistrationAmount, nextOrganizerFeeAmount);
+
+        enforceCurrentColombiaRules();
         updateDecimalIfPresent(GLOBAL_REGISTRATION_AMOUNT, request.globalRegistrationAmount());
         updateDecimalIfPresent(ORGANIZER_FEE_AMOUNT, request.organizerFeeAmount());
-        updateDecimalIfPresent(GLOBAL_PRIZE_POOL_AMOUNT, request.globalPrizePoolAmount());
+        updateValue(GLOBAL_PRIZE_POOL_AMOUNT, calculateGlobalPrizePoolAmount(nextGlobalRegistrationAmount, nextOrganizerFeeAmount).toPlainString());
         updateIntIfPresent(CLOSING_MINUTES, request.closingMinutesBeforeMatch());
         updateIntIfPresent(GLOBAL_EXACT_POINTS, request.exactPoints());
         updateIntIfPresent(GLOBAL_WINNER_POINTS, request.winnerPoints());
@@ -121,12 +106,18 @@ public class BettingParametersService {
 
     @Transactional(readOnly = true)
     public ParametrosApuestasResponse getParametersNoCache() {
+        return buildParametersResponse();
+    }
+
+    private ParametrosApuestasResponse buildParametersResponse() {
+        BigDecimal globalRegistrationAmount = getDecimal(GLOBAL_REGISTRATION_AMOUNT);
+        BigDecimal organizerFeeAmount = getDecimal(ORGANIZER_FEE_AMOUNT);
         return new ParametrosApuestasResponse(
-                getDecimal(COLOMBIA_BET_AMOUNT),
-                getInt(COLOMBIA_MAX_BETS),
-                getDecimal(GLOBAL_REGISTRATION_AMOUNT),
-                getDecimal(ORGANIZER_FEE_AMOUNT),
-                getDecimal(GLOBAL_PRIZE_POOL_AMOUNT),
+                CURRENT_COLOMBIA_BET_AMOUNT,
+                CURRENT_COLOMBIA_MAX_BETS,
+                globalRegistrationAmount,
+                organizerFeeAmount,
+                calculateGlobalPrizePoolAmount(globalRegistrationAmount, organizerFeeAmount),
                 getInt(CLOSING_MINUTES),
                 getInt(GLOBAL_EXACT_POINTS),
                 getInt(GLOBAL_WINNER_POINTS),
@@ -146,6 +137,22 @@ public class BettingParametersService {
                 getText(INTERSTITIAL_BANNER_TARGET_URL),
                 getText(INTERSTITIAL_BANNER_ALT_TEXT),
                 getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
+    }
+
+    private BigDecimal calculateGlobalPrizePoolAmount(BigDecimal globalRegistrationAmount, BigDecimal organizerFeeAmount) {
+        BigDecimal prizePoolAmount = globalRegistrationAmount.subtract(organizerFeeAmount);
+        return prizePoolAmount.signum() < 0 ? BigDecimal.ZERO : prizePoolAmount;
+    }
+
+    private void validateGlobalEconomicSplit(BigDecimal globalRegistrationAmount, BigDecimal organizerFeeAmount) {
+        if (organizerFeeAmount.compareTo(globalRegistrationAmount) > 0) {
+            throw new ReglaNegocioException("El aporte del organizador no puede superar la inscripcion global.");
+        }
+    }
+
+    private void enforceCurrentColombiaRules() {
+        updateValue(COLOMBIA_BET_AMOUNT, CURRENT_COLOMBIA_BET_AMOUNT.toPlainString());
+        updateValue(COLOMBIA_MAX_BETS, String.valueOf(CURRENT_COLOMBIA_MAX_BETS));
     }
 
     public int closingMinutesBeforeMatch() {
