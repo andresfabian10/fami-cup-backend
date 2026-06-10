@@ -1,6 +1,8 @@
 package com.famicup.servicio;
 
 import com.famicup.excepcion.ReglaNegocioException;
+import com.famicup.excepcion.RecursoNoEncontradoException;
+import com.famicup.modelo.dto.ActualizarPronosticoGlobalManualRequest;
 import com.famicup.modelo.dto.GuardarPronosticoGlobalRequest;
 import com.famicup.modelo.dto.PronosticoGlobalResponse;
 import com.famicup.modelo.entidad.Partido;
@@ -9,6 +11,7 @@ import com.famicup.modelo.entidad.ResultadoPartido;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoPronostico;
 import com.famicup.modelo.enumeracion.GanadorPartido;
+import com.famicup.modelo.enumeracion.OrigenRegistro;
 import com.famicup.modelo.mapper.ApuestaMapper;
 import com.famicup.repositorio.PronosticoGlobalRepository;
 import com.famicup.repositorio.ResultadoPartidoRepository;
@@ -73,6 +76,9 @@ public class GlobalPredictionService {
         prediction.setPredictedHomeGoals(request.homeGoals());
         prediction.setPredictedAwayGoals(request.awayGoals());
         prediction.setStatus(EstadoPronostico.VALID);
+        if (prediction.getId() == null) {
+            prediction.setEntryOrigin(OrigenRegistro.PLAYER);
+        }
         prediction.setRegisteredAt(prediction.getRegisteredAt() == null ? now : prediction.getRegisteredAt());
         prediction.setPoints(0);
         prediction.setExactHit(false);
@@ -87,6 +93,73 @@ public class GlobalPredictionService {
                 "Guardo pronostico " + request.homeGoals() + "-" + request.awayGoals() + " para partido " + match.getId(),
                 "Pronostico global guardado");
         return apuestaMapper.toGlobalResponse(saved);
+    }
+
+    @CacheEvict(value = "ranking", allEntries = true)
+    @Transactional
+    public PronosticoGlobalResponse savePredictionForAdmin(Usuario admin, Usuario player, GuardarPronosticoGlobalRequest request) {
+        Partido match = partidoService.getRequired(request.matchId());
+        if (partidoService.isColombiaMatch(match)) {
+            throw new ReglaNegocioException("Para partidos de Colombia registra una apuesta Colombia y marca la principal.");
+        }
+        PronosticoGlobal prediction = predictionRepository.findByUserAndMatch(player, match)
+                .orElseGet(PronosticoGlobal::new);
+        boolean newPrediction = prediction.getId() == null;
+        applyManualPredictionValues(prediction, player, match, request.homeGoals(), request.awayGoals(), admin, newPrediction);
+        PronosticoGlobal saved = predictionRepository.save(prediction);
+        auditService.record(
+                admin,
+                "MANUAL_GLOBAL_PREDICTION_SAVE",
+                "GLOBAL_PREDICTION",
+                saved.getId().toString(),
+                "Registro manual pronostico " + request.homeGoals() + "-" + request.awayGoals() + " para " + player.getUsername(),
+                "Pronostico global guardado por ADMIN");
+        return apuestaMapper.toGlobalResponse(saved);
+    }
+
+    @CacheEvict(value = "ranking", allEntries = true)
+    @Transactional
+    public PronosticoGlobalResponse updatePredictionForAdmin(Usuario admin, java.util.UUID predictionId, ActualizarPronosticoGlobalManualRequest request) {
+        PronosticoGlobal prediction = predictionRepository.findById(predictionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Pronostico global no encontrado."));
+        Partido match = request.matchId() == null ? prediction.getMatch() : partidoService.getRequired(request.matchId());
+        if (partidoService.isColombiaMatch(match)) {
+            throw new ReglaNegocioException("Para partidos de Colombia registra una apuesta Colombia y marca la principal.");
+        }
+        predictionRepository.findByUserAndMatch(prediction.getUser(), match)
+                .filter(existing -> !existing.getId().equals(prediction.getId()))
+                .ifPresent(existing -> {
+                    throw new ReglaNegocioException("El jugador ya tiene un pronostico global para ese partido.");
+                });
+
+        applyManualPredictionValues(prediction, prediction.getUser(), match, request.homeGoals(), request.awayGoals(), admin, false);
+        auditService.record(
+                admin,
+                "MANUAL_GLOBAL_PREDICTION_UPDATE",
+                "GLOBAL_PREDICTION",
+                prediction.getId().toString(),
+                "Corrigio manualmente pronostico de " + prediction.getUser().getUsername(),
+                "Pronostico global actualizado por ADMIN");
+        return apuestaMapper.toGlobalResponse(prediction);
+    }
+
+    @CacheEvict(value = "ranking", allEntries = true)
+    @Transactional
+    public void deletePredictionForAdmin(Usuario admin, java.util.UUID predictionId) {
+        PronosticoGlobal prediction = predictionRepository.findById(predictionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Pronostico global no encontrado."));
+        if (prediction.getStatus() == EstadoPronostico.EVALUATED) {
+            throw new ReglaNegocioException("Este pronostico ya fue evaluado y no se puede eliminar manualmente.");
+        }
+        String username = prediction.getUser().getUsername();
+        predictionRepository.delete(prediction);
+        auditService.record(
+                admin,
+                "MANUAL_GLOBAL_PREDICTION_DELETE",
+                "GLOBAL_PREDICTION",
+                predictionId.toString(),
+                "Elimino manualmente pronostico global de " + username,
+                "Pronostico global eliminado por ADMIN");
     }
 
     @CacheEvict(value = "ranking", allEntries = true)
@@ -114,6 +187,31 @@ public class GlobalPredictionService {
         prediction.setPoints(points);
         prediction.setStatus(EstadoPronostico.EVALUATED);
         prediction.setEvaluatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+    }
+
+    private void applyManualPredictionValues(
+            PronosticoGlobal prediction,
+            Usuario player,
+            Partido match,
+            Integer homeGoals,
+            Integer awayGoals,
+            Usuario admin,
+            boolean newPrediction) {
+        prediction.setUser(player);
+        prediction.setMatch(match);
+        prediction.setPredictedHomeGoals(homeGoals);
+        prediction.setPredictedAwayGoals(awayGoals);
+        prediction.setStatus(EstadoPronostico.VALID);
+        prediction.setPoints(0);
+        prediction.setExactHit(false);
+        prediction.setWinnerHit(false);
+        prediction.setEvaluatedAt(null);
+        prediction.setUpdatedByAdmin(admin);
+        if (newPrediction) {
+            prediction.setEntryOrigin(OrigenRegistro.ADMIN);
+            prediction.setCreatedByAdmin(admin);
+            prediction.setRegisteredAt(OffsetDateTime.now(ZoneOffset.UTC));
+        }
     }
 
     private GanadorPartido winnerOf(int homeGoals, int awayGoals) {

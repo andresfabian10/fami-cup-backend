@@ -34,7 +34,9 @@ class BettingParametersServiceTest {
         service = new BettingParametersService(repository, auditService);
         put(BettingParametersService.COLOMBIA_BET_AMOUNT, "5000");
         put(BettingParametersService.COLOMBIA_MAX_BETS, "3");
-        put(BettingParametersService.GLOBAL_REGISTRATION_AMOUNT, "60000");
+        put(BettingParametersService.GLOBAL_REGISTRATION_AMOUNT, "50000");
+        put(BettingParametersService.ORGANIZER_FEE_AMOUNT, "10000");
+        put(BettingParametersService.GLOBAL_PRIZE_POOL_AMOUNT, "40000");
         put(BettingParametersService.CLOSING_MINUTES, "10");
         put(BettingParametersService.GLOBAL_EXACT_POINTS, "5");
         put(BettingParametersService.GLOBAL_WINNER_POINTS, "2");
@@ -43,7 +45,7 @@ class BettingParametersServiceTest {
         put(BettingParametersService.GLOBAL_PRIZE_THIRD, "20");
         put(BettingParametersService.GLOBAL_RESERVE, "0");
         put(BettingParametersService.WORLD_CHAMPION_POINTS, "10");
-        put(BettingParametersService.WORLD_CHAMPION_LOCK_AT, "2026-06-11T00:00:00Z");
+        put(BettingParametersService.WORLD_CHAMPION_LOCK_AT, "2026-06-11T14:00:00");
         put(BettingParametersService.ADMIN_WHATSAPP_NUMBER, "573163353115");
         put(BettingParametersService.FORGOT_PASSWORD_WHATSAPP_MESSAGE, "Hola");
         put(BettingParametersService.REQUEST_ACCESS_WHATSAPP_MESSAGE, "Acceso");
@@ -62,7 +64,9 @@ class BettingParametersServiceTest {
         var response = service.getParametersNoCache();
 
         assertThat(response.colombiaBetAmount()).isEqualByComparingTo("5000");
-        assertThat(response.globalRegistrationAmount()).isEqualByComparingTo("60000");
+        assertThat(response.globalRegistrationAmount()).isEqualByComparingTo("50000");
+        assertThat(response.organizerFeeAmount()).isEqualByComparingTo("10000");
+        assertThat(response.globalPrizePoolAmount()).isEqualByComparingTo("40000");
         assertThat(response.colombiaMaxBetsPerMatch()).isEqualTo(3);
         assertThat(response.closingMinutesBeforeMatch()).isEqualTo(10);
         assertThat(response.exactPoints()).isEqualTo(5);
@@ -74,6 +78,9 @@ class BettingParametersServiceTest {
         service.updateParameters(new ActualizarParametrosRequest(
                 BigDecimal.valueOf(7000),
                 4,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

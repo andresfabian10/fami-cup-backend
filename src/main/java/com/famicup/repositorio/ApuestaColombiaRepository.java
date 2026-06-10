@@ -6,6 +6,7 @@ import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoApuestaColombia;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,4 +36,6 @@ public interface ApuestaColombiaRepository extends JpaRepository<ApuestaColombia
     List<ApuestaColombia> findAllByOrderByRegisteredAtDesc();
 
     List<ApuestaColombia> findByMatchAndStatus(Partido match, EstadoApuestaColombia status);
+
+    List<ApuestaColombia> findByMatchInOrderByRegisteredAtDesc(Collection<Partido> matches);
 }

@@ -17,6 +17,7 @@ import com.famicup.modelo.entidad.Pago;
 import com.famicup.modelo.entidad.Partido;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoApuestaColombia;
+import com.famicup.modelo.enumeracion.OrigenRegistro;
 import com.famicup.modelo.mapper.ApuestaMapper;
 import com.famicup.repositorio.ApuestaColombiaRepository;
 import com.famicup.repositorio.PagoRepository;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -279,6 +281,28 @@ class ColombiaBetsServiceTest {
 
         verify(pagoRepository).delete(payment);
         verify(betRepository).delete(bet);
+    }
+
+    @Test
+    void adminCreatesManualBetWithoutTimeClosingAndMarksOrigin() {
+        Usuario admin = user();
+        admin.setUsername("admin");
+        Usuario player = user();
+        Partido match = match("COL", "ARG");
+        when(partidoService.getRequired(10L)).thenReturn(match);
+        when(partidoService.isColombiaMatch(match)).thenReturn(true);
+        when(parametersService.colombiaMaxBetsPerMatch()).thenReturn(3);
+        when(parametersService.colombiaBetAmount()).thenReturn(BigDecimal.valueOf(5000));
+        when(betRepository.findByUserAndMatch(player, match)).thenReturn(List.of());
+        when(betRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createBetsForAdmin(admin, player, request(10L, 1));
+
+        ArgumentCaptor<ApuestaColombia> betCaptor = ArgumentCaptor.forClass(ApuestaColombia.class);
+        verify(betRepository).save(betCaptor.capture());
+        assertThat(betCaptor.getValue().getEntryOrigin()).isEqualTo(OrigenRegistro.ADMIN);
+        assertThat(betCaptor.getValue().getCreatedByAdmin()).isEqualTo(admin);
+        verify(partidoService, never()).isClosedForBetting(any(), any());
     }
 
     private CrearApuestasColombiaRequest request(Long matchId, int count) {

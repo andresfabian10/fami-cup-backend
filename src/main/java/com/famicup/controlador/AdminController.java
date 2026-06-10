@@ -1,25 +1,35 @@
 package com.famicup.controlador;
 
 import com.famicup.modelo.dto.ActualizarParametrosRequest;
+import com.famicup.modelo.dto.ActualizarApuestaColombiaRequest;
+import com.famicup.modelo.dto.ActualizarPronosticoGlobalManualRequest;
 import com.famicup.modelo.dto.ActualizarUsuarioRequest;
+import com.famicup.modelo.dto.ApuestaColombiaResponse;
 import com.famicup.modelo.dto.AuditEventResponse;
 import com.famicup.modelo.dto.AdminNotificationResponse;
 import com.famicup.modelo.dto.AdminDashboardResponse;
 import com.famicup.modelo.dto.AdminPredictionsResponse;
+import com.famicup.modelo.dto.CrearApuestasColombiaRequest;
 import com.famicup.modelo.dto.CrearUsuarioRequest;
+import com.famicup.modelo.dto.GuardarPronosticoGlobalRequest;
+import com.famicup.modelo.dto.ManualEntryHistoryResponse;
 import com.famicup.modelo.dto.PagoResponse;
 import com.famicup.modelo.dto.ParametrosApuestasResponse;
+import com.famicup.modelo.dto.PartidoDto;
 import com.famicup.modelo.dto.PronosticoCampeonMundialResponse;
+import com.famicup.modelo.dto.PronosticoGlobalResponse;
 import com.famicup.modelo.dto.SyncResponse;
 import com.famicup.modelo.dto.UsuarioResponse;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.servicio.ApiFootballSyncService;
 import com.famicup.servicio.AdminNotificationService;
+import com.famicup.servicio.AdminManualEntryService;
 import com.famicup.servicio.AdminPredictionsService;
 import com.famicup.servicio.AuditExportService;
 import com.famicup.servicio.AuditService;
 import com.famicup.servicio.BettingParametersService;
 import com.famicup.servicio.DashboardService;
+import com.famicup.servicio.EvidenceExportService;
 import com.famicup.servicio.PagoService;
 import com.famicup.servicio.UsuarioService;
 import com.famicup.servicio.WorldChampionPredictionService;
@@ -28,6 +38,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.core.io.ByteArrayResource;
@@ -63,9 +74,11 @@ public class AdminController {
     private final ApiFootballSyncService syncService;
     private final AdminNotificationService notificationService;
     private final AdminPredictionsService predictionsService;
+    private final AdminManualEntryService manualEntryService;
     private final WorldChampionPredictionService championPredictionService;
     private final AuditService auditService;
     private final AuditExportService auditExportService;
+    private final EvidenceExportService evidenceExportService;
 
     public AdminController(
             DashboardService dashboardService,
@@ -75,9 +88,11 @@ public class AdminController {
             ApiFootballSyncService syncService,
             AdminNotificationService notificationService,
             AdminPredictionsService predictionsService,
+            AdminManualEntryService manualEntryService,
             WorldChampionPredictionService championPredictionService,
             AuditService auditService,
-            AuditExportService auditExportService) {
+            AuditExportService auditExportService,
+            EvidenceExportService evidenceExportService) {
         this.dashboardService = dashboardService;
         this.usuarioService = usuarioService;
         this.pagoService = pagoService;
@@ -85,9 +100,11 @@ public class AdminController {
         this.syncService = syncService;
         this.notificationService = notificationService;
         this.predictionsService = predictionsService;
+        this.manualEntryService = manualEntryService;
         this.championPredictionService = championPredictionService;
         this.auditService = auditService;
         this.auditExportService = auditExportService;
+        this.evidenceExportService = evidenceExportService;
     }
 
     @GetMapping("/dashboard")
@@ -155,8 +172,8 @@ public class AdminController {
 
     @PutMapping("/parameters")
     @Operation(summary = "Actualizar parametros", description = "Actualiza montos, limites, cierre, puntos y porcentajes. Rol permitido: ADMIN.")
-    public ParametrosApuestasResponse updateParameters(@Valid @RequestBody ActualizarParametrosRequest request) {
-        return parametersService.updateParameters(request);
+    public ParametrosApuestasResponse updateParameters(@Valid @RequestBody ActualizarParametrosRequest request, Authentication authentication) {
+        return parametersService.updateParameters(request, usuarioService.getCurrentUser(authentication));
     }
 
     @PostMapping("/sync/fixtures")
@@ -183,6 +200,76 @@ public class AdminController {
         return predictionsService.listPredictions();
     }
 
+    @GetMapping("/manual-entry/users")
+    @Operation(summary = "Jugadores para registro manual", description = "Lista jugadores disponibles para registrar apuestas o pronosticos manualmente. Rol permitido: ADMIN.")
+    public List<UsuarioResponse> manualEntryUsers() {
+        return manualEntryService.listPlayers();
+    }
+
+    @GetMapping("/manual-entry/matches")
+    @Operation(summary = "Partidos para registro manual", description = "Lista partidos guardados en PostgreSQL para correcciones manuales. Rol permitido: ADMIN.")
+    public List<PartidoDto> manualEntryMatches() {
+        return manualEntryService.listMatches();
+    }
+
+    @GetMapping("/manual-entry/users/{userId}/history")
+    @Operation(summary = "Historial manual por jugador", description = "Muestra apuestas Colombia y pronosticos globales del jugador con origen y auditoria funcional.")
+    public ManualEntryHistoryResponse manualEntryHistory(@PathVariable UUID userId) {
+        return manualEntryService.history(userId);
+    }
+
+    @PostMapping("/manual-entry/users/{userId}/colombia-bets")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Registrar apuestas Colombia manuales", description = "Permite al ADMIN registrar apuestas Colombia para un jugador sin aplicar cierre por tiempo.")
+    public List<ApuestaColombiaResponse> createManualColombiaBets(
+            Authentication authentication,
+            @PathVariable UUID userId,
+            @Valid @RequestBody CrearApuestasColombiaRequest request) {
+        return manualEntryService.createColombiaBets(usuarioService.getCurrentUser(authentication), userId, request);
+    }
+
+    @PutMapping("/manual-entry/colombia-bets/{betId}")
+    @Operation(summary = "Editar apuesta Colombia manualmente", description = "Permite al ADMIN corregir una apuesta Colombia y su principal sin aplicar cierre por tiempo.")
+    public ApuestaColombiaResponse updateManualColombiaBet(
+            Authentication authentication,
+            @PathVariable UUID betId,
+            @Valid @RequestBody ActualizarApuestaColombiaRequest request) {
+        return manualEntryService.updateColombiaBet(usuarioService.getCurrentUser(authentication), betId, request);
+    }
+
+    @DeleteMapping("/manual-entry/colombia-bets/{betId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Eliminar apuesta Colombia manualmente", description = "Permite al ADMIN eliminar una apuesta Colombia y recalcular la principal del jugador.")
+    public void deleteManualColombiaBet(Authentication authentication, @PathVariable UUID betId) {
+        manualEntryService.deleteColombiaBet(usuarioService.getCurrentUser(authentication), betId);
+    }
+
+    @PostMapping("/manual-entry/users/{userId}/global-predictions")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Registrar pronostico global manual", description = "Permite al ADMIN registrar o actualizar un pronostico global para un jugador sin aplicar cierre por tiempo.")
+    public PronosticoGlobalResponse createManualGlobalPrediction(
+            Authentication authentication,
+            @PathVariable UUID userId,
+            @Valid @RequestBody GuardarPronosticoGlobalRequest request) {
+        return manualEntryService.createGlobalPrediction(usuarioService.getCurrentUser(authentication), userId, request);
+    }
+
+    @PutMapping("/manual-entry/global-predictions/{predictionId}")
+    @Operation(summary = "Editar pronostico global manualmente", description = "Permite al ADMIN corregir un pronostico global existente.")
+    public PronosticoGlobalResponse updateManualGlobalPrediction(
+            Authentication authentication,
+            @PathVariable UUID predictionId,
+            @Valid @RequestBody ActualizarPronosticoGlobalManualRequest request) {
+        return manualEntryService.updateGlobalPrediction(usuarioService.getCurrentUser(authentication), predictionId, request);
+    }
+
+    @DeleteMapping("/manual-entry/global-predictions/{predictionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Eliminar pronostico global manualmente", description = "Permite al ADMIN eliminar un pronostico global no evaluado.")
+    public void deleteManualGlobalPrediction(Authentication authentication, @PathVariable UUID predictionId) {
+        manualEntryService.deleteGlobalPrediction(usuarioService.getCurrentUser(authentication), predictionId);
+    }
+
     @GetMapping("/audit/entries")
     @Operation(summary = "Eventos de auditoria", description = "Lista eventos funcionales seguros con filtros por usuario, accion, entidad y fecha. Rol permitido: ADMIN.")
     public List<AuditEventResponse> auditEntries(
@@ -197,14 +284,38 @@ public class AdminController {
     @GetMapping("/audit/export")
     @Operation(summary = "Exportar auditoria a Excel", description = "Descarga un archivo .xlsx con los eventos de auditoria filtrados. Rol permitido: ADMIN.")
     public ResponseEntity<ByteArrayResource> exportAudit(
+            Authentication authentication,
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
         byte[] bytes = auditExportService.toExcel(auditService.list(username, action, entityType, from, to));
+        auditService.record(
+                usuarioService.getCurrentUser(authentication),
+                "AUDIT_EXPORT",
+                "AUDIT_EVENT",
+                "export",
+                "Exporto auditoria a Excel",
+                "Excel de auditoria generado");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=famicup-auditoria.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(bytes.length)
+                .body(new ByteArrayResource(bytes));
+    }
+
+    @GetMapping("/evidence/export")
+    @Operation(summary = "Exportar evidencia diaria", description = "Genera un Excel operativo con partidos del dia, pronosticos, apuestas Colombia, pagos y campeon mundial.")
+    public ResponseEntity<ByteArrayResource> exportEvidence(
+            Authentication authentication,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "true") boolean includePayments,
+            @RequestParam(defaultValue = "true") boolean includeChampion) {
+        byte[] bytes = evidenceExportService.exportDailyEvidence(date, includePayments, includeChampion, usuarioService.getCurrentUser(authentication));
+        String filename = "famicup-evidencia-" + date + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .contentLength(bytes.length)
                 .body(new ByteArrayResource(bytes));

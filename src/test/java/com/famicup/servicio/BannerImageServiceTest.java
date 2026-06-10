@@ -73,7 +73,9 @@ class BannerImageServiceTest {
         return new ParametrosApuestasResponse(
                 BigDecimal.valueOf(5000),
                 3,
-                BigDecimal.valueOf(60000),
+                BigDecimal.valueOf(50000),
+                BigDecimal.valueOf(10000),
+                BigDecimal.valueOf(40000),
                 10,
                 0,
                 2,

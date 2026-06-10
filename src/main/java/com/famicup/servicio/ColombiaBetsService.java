@@ -13,6 +13,7 @@ import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoApuestaColombia;
 import com.famicup.modelo.enumeracion.EstadoPago;
 import com.famicup.modelo.enumeracion.EstadoPronostico;
+import com.famicup.modelo.enumeracion.OrigenRegistro;
 import com.famicup.modelo.enumeracion.SistemaPago;
 import com.famicup.modelo.mapper.ApuestaMapper;
 import com.famicup.repositorio.ApuestaColombiaRepository;
@@ -84,7 +85,7 @@ public class ColombiaBetsService {
 
         List<ApuestaColombia> savedBets = new ArrayList<>();
         for (CrearApuestasColombiaRequest.MarcadorRequest score : request.bets()) {
-            savedBets.add(createSingleBet(user, match, score, now));
+            savedBets.add(createSingleBet(user, match, score, now, OrigenRegistro.PLAYER, null));
         }
         normalizePrincipal(user, match);
         syncPrincipalGlobalPrediction(user, match, now);
@@ -95,6 +96,45 @@ public class ColombiaBetsService {
                 String.valueOf(match.getId()),
                 "Registro " + savedBets.size() + " apuesta(s) Colombia",
                 "Apuestas Colombia guardadas");
+
+        return savedBets.stream().map(apuestaMapper::toColombiaResponse).toList();
+    }
+
+    @Transactional
+    public List<ApuestaColombiaResponse> createBetsForAdmin(Usuario admin, Usuario player, CrearApuestasColombiaRequest request) {
+        Partido match = partidoService.getRequired(request.matchId());
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        if (!partidoService.isColombiaMatch(match)) {
+            throw new ReglaNegocioException("Colombia Especial solo acepta partidos donde juega Colombia.");
+        }
+
+        int maxBets = parametersService.colombiaMaxBetsPerMatch();
+        List<ApuestaColombia> existingBets = betRepository.findByUserAndMatch(player, match);
+        validateUniqueScores(request.bets(), existingBets, null);
+        validatePrincipalRequest(request.bets(), existingBets);
+        long existing = existingBets.size();
+        if (request.bets().isEmpty() || existing + request.bets().size() > maxBets) {
+            throw new ReglaNegocioException("Solo se pueden registrar maximo " + maxBets + " apuestas por partido de Colombia.");
+        }
+
+        if (hasRequestedPrincipal(request.bets())) {
+            clearPrincipalForUserAndMatch(player, match, existingBets);
+        }
+
+        List<ApuestaColombia> savedBets = new ArrayList<>();
+        for (CrearApuestasColombiaRequest.MarcadorRequest score : request.bets()) {
+            savedBets.add(createSingleBet(player, match, score, now, OrigenRegistro.ADMIN, admin));
+        }
+        normalizePrincipal(player, match);
+        syncPrincipalGlobalPrediction(player, match, now);
+        auditService.record(
+                admin,
+                "MANUAL_COLOMBIA_BET_CREATE",
+                "COLOMBIA_BET",
+                String.valueOf(match.getId()),
+                "Registro manual " + savedBets.size() + " apuesta(s) Colombia para " + player.getUsername(),
+                "Apuestas Colombia guardadas por ADMIN");
 
         return savedBets.stream().map(apuestaMapper::toColombiaResponse).toList();
     }
@@ -146,6 +186,40 @@ public class ColombiaBetsService {
     }
 
     @Transactional
+    public ApuestaColombiaResponse updateBetForAdmin(Usuario admin, UUID betId, ActualizarApuestaColombiaRequest request) {
+        ApuestaColombia bet = betRepository.findById(betId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Apuesta Colombia no encontrada."));
+        if (!partidoService.isColombiaMatch(bet.getMatch())) {
+            throw new ReglaNegocioException("Colombia Especial solo acepta partidos donde juega Colombia.");
+        }
+        if (bet.getStatus() == EstadoApuestaColombia.WON || bet.getStatus() == EstadoApuestaColombia.LOST) {
+            throw new ReglaNegocioException("Esta apuesta ya no esta disponible para correccion manual.");
+        }
+
+        Usuario player = bet.getUser();
+        List<ApuestaColombia> allBets = betRepository.findByUserAndMatch(player, bet.getMatch());
+        validateUniqueScore(request.homeGoals(), request.awayGoals(), allBets, bet.getId());
+
+        bet.setPredictedHomeGoals(request.homeGoals());
+        bet.setPredictedAwayGoals(request.awayGoals());
+        bet.setUpdatedByAdmin(admin);
+        if (Boolean.TRUE.equals(request.principalGlobalPrediction())) {
+            clearPrincipalForUserAndMatch(player, bet.getMatch(), allBets);
+            bet.setPrincipalGlobalPrediction(true);
+        }
+        normalizePrincipal(player, bet.getMatch());
+        syncPrincipalGlobalPrediction(player, bet.getMatch(), OffsetDateTime.now(ZoneOffset.UTC));
+        auditService.record(
+                admin,
+                "MANUAL_COLOMBIA_BET_UPDATE",
+                "COLOMBIA_BET",
+                bet.getId().toString(),
+                "Corrigio manualmente apuesta de " + player.getUsername() + " a " + request.homeGoals() + "-" + request.awayGoals(),
+                "Apuesta Colombia actualizada por ADMIN");
+        return apuestaMapper.toColombiaResponse(bet);
+    }
+
+    @Transactional
     public void deleteBet(Usuario user, UUID betId) {
         ApuestaColombia bet = betRepository.findById(betId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apuesta Colombia no encontrada."));
@@ -191,11 +265,48 @@ public class ColombiaBetsService {
                 "Apuesta Colombia eliminada");
     }
 
+    @Transactional
+    public void deleteBetForAdmin(Usuario admin, UUID betId) {
+        ApuestaColombia bet = betRepository.findById(betId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Apuesta Colombia no encontrada."));
+        Usuario player = bet.getUser();
+        Partido match = bet.getMatch();
+        if (bet.getStatus() == EstadoApuestaColombia.WON || bet.getStatus() == EstadoApuestaColombia.LOST) {
+            throw new ReglaNegocioException("Esta apuesta ya no esta disponible para eliminacion manual.");
+        }
+
+        boolean wasPrincipal = bet.isPrincipalGlobalPrediction();
+        List<ApuestaColombia> remainingBets = betRepository.findByUserAndMatch(player, match).stream()
+                .filter(currentBet -> !currentBet.getId().equals(bet.getId()))
+                .toList();
+
+        pagoRepository.findByColombiaBet(bet).ifPresent(pagoRepository::delete);
+        betRepository.delete(bet);
+        if (remainingBets.isEmpty()) {
+            predictionRepository.findByUserAndMatch(player, match).ifPresent(predictionRepository::delete);
+        } else {
+            if (wasPrincipal || remainingBets.stream().noneMatch(ApuestaColombia::isPrincipalGlobalPrediction)) {
+                clearPrincipalForUserAndMatch(player, match, remainingBets);
+                remainingBets.get(0).setPrincipalGlobalPrediction(true);
+            }
+            syncPrincipalGlobalPrediction(player, match, OffsetDateTime.now(ZoneOffset.UTC));
+        }
+        auditService.record(
+                admin,
+                "MANUAL_COLOMBIA_BET_DELETE",
+                "COLOMBIA_BET",
+                betId.toString(),
+                "Elimino manualmente apuesta Colombia de " + player.getUsername(),
+                "Apuesta Colombia eliminada por ADMIN");
+    }
+
     private ApuestaColombia createSingleBet(
             Usuario user,
             Partido match,
             CrearApuestasColombiaRequest.MarcadorRequest score,
-            OffsetDateTime now) {
+            OffsetDateTime now,
+            OrigenRegistro origin,
+            Usuario admin) {
         ApuestaColombia bet = new ApuestaColombia();
         bet.setUser(user);
         bet.setMatch(match);
@@ -206,6 +317,9 @@ public class ColombiaBetsService {
         bet.setPaymentStatus(EstadoPago.PENDING);
         bet.setValid(false);
         bet.setPrincipalGlobalPrediction(Boolean.TRUE.equals(score.principalGlobalPrediction()));
+        bet.setEntryOrigin(origin);
+        bet.setCreatedByAdmin(admin);
+        bet.setUpdatedByAdmin(admin);
         bet.setRegisteredAt(now);
         ApuestaColombia saved = betRepository.save(bet);
 
@@ -305,6 +419,7 @@ public class ColombiaBetsService {
 
         PronosticoGlobal prediction = predictionRepository.findByUserAndMatch(user, match)
                 .orElseGet(PronosticoGlobal::new);
+        boolean newPrediction = prediction.getId() == null;
         prediction.setUser(user);
         prediction.setMatch(match);
         prediction.setPredictedHomeGoals(principalBet.getPredictedHomeGoals());
@@ -315,6 +430,13 @@ public class ColombiaBetsService {
         prediction.setWinnerHit(false);
         prediction.setRegisteredAt(prediction.getRegisteredAt() == null ? now : prediction.getRegisteredAt());
         prediction.setEvaluatedAt(null);
+        if (newPrediction) {
+            prediction.setEntryOrigin(principalBet.getEntryOrigin());
+            prediction.setCreatedByAdmin(principalBet.getCreatedByAdmin());
+        }
+        if (principalBet.getUpdatedByAdmin() != null) {
+            prediction.setUpdatedByAdmin(principalBet.getUpdatedByAdmin());
+        }
         predictionRepository.save(prediction);
     }
 }
