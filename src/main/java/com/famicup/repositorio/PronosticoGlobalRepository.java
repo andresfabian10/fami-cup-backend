@@ -20,4 +20,6 @@ public interface PronosticoGlobalRepository extends JpaRepository<PronosticoGlob
     List<PronosticoGlobal> findAllByOrderByRegisteredAtDesc();
 
     List<PronosticoGlobal> findByMatch(Partido match);
+
+    List<PronosticoGlobal> findByMatchInOrderByRegisteredAtDesc(Collection<Partido> matches);
 }

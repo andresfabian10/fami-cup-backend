@@ -36,7 +36,7 @@ Documento preparado para uso interno y para compartir con la familia.
 
 ### Vacíos en las reglas
 
-- Mantener visible que el sistema 2 tiene inscripción fija general de 60.000 COP.
+- Mantener visible que el sistema 2 tiene inscripción global parametrizable. La bolsa premiable global se calcula siempre como inscripción global menos aporte del organizador. Para la configuración actual, cada jugador paga 50.000 COP: 10.000 COP corresponden al organizador y 40.000 COP ingresan a la bolsa de premios de la polla.
 - Definir qué pasa si una persona registró una apuesta pero no pagó a tiempo.
 - Definir cuántas apuestas máximas se permiten por persona en partidos de Colombia.
 - Comunicar claramente que en eliminación directa solo cuentan los 90 minutos más reposición.
@@ -77,9 +77,9 @@ Operativamente deben ser sistemas independientes, pero visualmente integrados de
 | Tema | Regla propuesta |
 | ----- | ----- |
 | Quién puede participar | Solo familiares invitados y registrados en la app o en la lista oficial del juego. |
-| Costo por apuesta en Sistema 1 | Cada apuesta en un partido de Colombia cuesta 5.000 COP. |
-| Inscripción Sistema 2 | La inscripción única para participar en la quiniela general por puntos es de 60.000 COP. De ese valor, 30.000 COP son aporte fijo de mantenimiento de la app y 30.000 COP entran al pozo premiable global. |
-| Cantidad de apuestas en Sistema 1 | Se permiten varias apuestas por persona en un mismo partido de Colombia, con recomendación de máximo 3 apuestas por usuario por partido. |
+| Costo por apuesta en Sistema 1 | Cada apuesta en un partido de Colombia cuesta 5.000 COP en la configuración oficial actual. |
+| Inscripción Sistema 2 | La inscripción global tiene un valor parametrizable. La bolsa de premios se calcula como inscripción global menos aporte del organizador. Para la configuración actual, cada jugador paga 50.000 COP; de ese valor, 10.000 COP corresponden al organizador y 40.000 COP ingresan a la bolsa de premios de la polla. |
+| Cantidad de apuestas en Sistema 1 | Se permiten varias apuestas por persona en un mismo partido de Colombia. La configuración oficial actual es máximo 3 apuestas por usuario por partido. |
 | Cantidad de apuestas en Sistema 2 | Solo se permite 1 pronóstico por usuario por partido. |
 | Hora de cierre | Todas las apuestas y pronósticos se cierran 10 minutos antes de la hora oficial de inicio del partido. |
 | Qué pasa si no ha pagado | En el sistema 1, una apuesta no pagada antes del cierre queda anulada. |
@@ -125,11 +125,11 @@ Se evaluaron tres alternativas para el ranking general por puntos:
 
 ## 5. Premios del sistema 2 para los 3 primeros puestos
 
-- Inscripción del MVP: **60.000 COP** por participante.
-- Aporte fijo de mantenimiento de la app: **30.000 COP** por participante.
-- Aporte al pozo premiable global: **30.000 COP** por participante.
+- Inscripción del MVP / Polla Global: **50.000 COP** por participante en la configuración actual.
+- Aporte del organizador / administración: **10.000 COP** por participante.
+- Aporte al pozo premiable global: **40.000 COP** por participante en la configuración actual, calculado como 50.000 COP de inscripción menos 10.000 COP del organizador.
 - Separar completamente el dinero del sistema 1 y del sistema 2.
-- Los premios del sistema 2 se calculan únicamente sobre el pozo premiable global, es decir, después de descontar el aporte de mantenimiento de la app.
+- Los premios del sistema 2 se calculan únicamente sobre el pozo premiable global, es decir, después de descontar el aporte del organizador / administración.
 
 | Modelo | 1ro | 2do | 3ro | Ventaja | Cuándo conviene |
 | ----- | :---: | :---: | :---: | ----- | ----- |
@@ -176,12 +176,12 @@ Ranking final del ejemplo: 1) Emilio con 12 puntos, 2) Andrés con 10, 3) Jhon c
 
 ### 6.3 Ejemplo de premios del top 3
 
-Supuesto: 10 familiares pagan una inscripción de 60.000 COP al sistema 2.
+Supuesto: 10 familiares pagan una inscripción de 50.000 COP al sistema 2.
 
-- Recaudo total: 600.000 COP
-- Aporte de mantenimiento app: 300.000 COP
-- Pozo premiable global: 300.000 COP
-- Modelo balanceado: 1ro **150.000 COP**, 2do **90.000 COP**, 3ro **60.000 COP**
+- Recaudo total: 500.000 COP
+- Aporte del organizador / administración: 100.000 COP
+- Pozo premiable global: 400.000 COP
+- Modelo balanceado: 1ro **200.000 COP**, 2do **120.000 COP**, 3ro **80.000 COP**
 
 ---
 
@@ -247,12 +247,12 @@ Supuesto: 10 familiares pagan una inscripción de 60.000 COP al sistema 2.
 
 - Sistema 1 solo para partidos de Colombia.
 - Cada apuesta cuesta **5.000 COP**.
-- Máximo **3 apuestas** por persona por partido de Colombia.
+- Máximo **3 apuestas** por persona por partido de Colombia. No debe mostrarse ni aplicarse un límite de 1 cupo salvo cambio formal de esta regla.
 - Cierre **10 minutos** antes del inicio del partido.
 - Solo gana el marcador exacto en el sistema 1.
 - Si nadie acierta en el sistema 1, el pozo pasa al siguiente partido de Colombia.
-- Sistema 2 con inscripción única de **60.000 COP**.
-- De cada inscripción del sistema 2, **30.000 COP** son aporte de mantenimiento de la app y **30.000 COP** entran al pozo premiable global.
+- Sistema 2 con inscripción global parametrizable. Configuración actual: **50.000 COP**.
+- De cada inscripción del sistema 2, el aporte al pozo premiable global se calcula como inscripción global menos aporte del organizador. En la configuración actual: **50.000 COP - 10.000 COP = 40.000 COP**.
 - Sistema equilibrado de puntos: exacto 5, ganador 2, empate 2.
 - Los partidos de Colombia suman dinero y puntos al mismo tiempo.
 - Premios del sistema 2 sobre el pozo premiable global: **50% / 30% / 20%** para el top 3.
@@ -276,8 +276,8 @@ Familia, para el Mundial 2026 vamos a jugar con 2 modalidades en la app:
 - Apuesta no pagada antes del cierre = no válida
 
 2) Quiniela general por puntos
-- Inscripción única: 60.000 COP
-- De esa inscripción, 30.000 COP son para mantenimiento de la app y 30.000 COP entran al pozo de premios global.
+- Inscripción global parametrizable. Configuración actual: 50.000 COP
+- De esa inscripción, el aporte al pozo de premios global se calcula restando el aporte del organizador / administración. Configuración actual: 50.000 COP - 10.000 COP = 40.000 COP.
 - Se pronostica 1 marcador por partido durante todo el Mundial
 - Puntaje: Exacto 5, ganador correcto 2, empate correcto 2
 - Los partidos de Colombia también suman en esta tabla
@@ -287,7 +287,7 @@ Premios quiniela general:
 - 1ro: 50%
 - 2do: 30%
 - 3ro: 20%
-Estos porcentajes se aplican sobre el pozo premiable global, después de descontar el mantenimiento de la app.
+Estos porcentajes se aplican sobre el pozo premiable global, después de descontar el aporte del organizador / administración.
 
 Importante:
 - Cuenta el marcador al final de los 90 minutos + adición

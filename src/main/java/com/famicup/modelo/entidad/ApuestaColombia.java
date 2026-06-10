@@ -2,6 +2,7 @@ package com.famicup.modelo.entidad;
 
 import com.famicup.modelo.enumeracion.EstadoApuestaColombia;
 import com.famicup.modelo.enumeracion.EstadoPago;
+import com.famicup.modelo.enumeracion.OrigenRegistro;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -60,6 +61,18 @@ public class ApuestaColombia extends Auditable {
 
     @Column(name = "principal_global_prediction", nullable = false)
     private boolean principalGlobalPrediction;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "entry_origin", nullable = false, length = 20)
+    private OrigenRegistro entryOrigin = OrigenRegistro.PLAYER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_admin_id")
+    private Usuario createdByAdmin;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_admin_id")
+    private Usuario updatedByAdmin;
 
     @Column(name = "registered_at", nullable = false)
     private OffsetDateTime registeredAt;

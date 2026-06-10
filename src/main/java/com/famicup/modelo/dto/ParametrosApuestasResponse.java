@@ -7,6 +7,8 @@ public record ParametrosApuestasResponse(
         BigDecimal colombiaBetAmount,
         int colombiaMaxBetsPerMatch,
         BigDecimal globalRegistrationAmount,
+        BigDecimal organizerFeeAmount,
+        BigDecimal globalPrizePoolAmount,
         int closingMinutesBeforeMatch,
         int exactPoints,
         int winnerPoints,

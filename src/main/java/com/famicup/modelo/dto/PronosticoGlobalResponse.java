@@ -13,5 +13,8 @@ public record PronosticoGlobalResponse(
         int points,
         boolean exactHit,
         boolean winnerHit,
+        String entryOrigin,
+        String createdByAdminUsername,
+        String updatedByAdminUsername,
         OffsetDateTime registeredAt) {
 }

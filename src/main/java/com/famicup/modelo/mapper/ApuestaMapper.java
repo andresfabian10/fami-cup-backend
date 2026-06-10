@@ -34,6 +34,9 @@ public class ApuestaMapper {
                 bet.getPaymentStatus(),
                 bet.isValid(),
                 bet.isPrincipalGlobalPrediction(),
+                bet.getEntryOrigin().name(),
+                bet.getCreatedByAdmin() == null ? null : bet.getCreatedByAdmin().getUsername(),
+                bet.getUpdatedByAdmin() == null ? null : bet.getUpdatedByAdmin().getUsername(),
                 bet.getRegisteredAt(),
                 bet.getPrizeAmountCop());
     }
@@ -48,6 +51,9 @@ public class ApuestaMapper {
                 prediction.getPoints(),
                 prediction.isExactHit(),
                 prediction.isWinnerHit(),
+                prediction.getEntryOrigin().name(),
+                prediction.getCreatedByAdmin() == null ? null : prediction.getCreatedByAdmin().getUsername(),
+                prediction.getUpdatedByAdmin() == null ? null : prediction.getUpdatedByAdmin().getUsername(),
                 prediction.getRegisteredAt());
     }
 }

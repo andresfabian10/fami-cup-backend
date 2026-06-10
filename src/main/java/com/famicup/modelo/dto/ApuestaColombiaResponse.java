@@ -18,6 +18,9 @@ public record ApuestaColombiaResponse(
         EstadoPago paymentStatus,
         boolean valid,
         boolean principalGlobalPrediction,
+        String entryOrigin,
+        String createdByAdminUsername,
+        String updatedByAdminUsername,
         OffsetDateTime registeredAt,
         BigDecimal prizeAmountCop) {
 }

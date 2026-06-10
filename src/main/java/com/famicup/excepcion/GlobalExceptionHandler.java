@@ -13,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -44,6 +45,12 @@ public class GlobalExceptionHandler {
                 .map(this::formatFieldError)
                 .toList();
         return build(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos.", request, details);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ErrorResponse> argumentTypeMismatch(MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
+        String fieldName = exception.getName() == null ? "parametro" : exception.getName();
+        return build(HttpStatus.BAD_REQUEST, "El valor enviado para " + fieldName + " no tiene un formato valido.", request, List.of());
     }
 
     @ExceptionHandler(ResponseStatusException.class)

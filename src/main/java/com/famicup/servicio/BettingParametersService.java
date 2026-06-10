@@ -1,12 +1,16 @@
 package com.famicup.servicio;
 
 import com.famicup.excepcion.RecursoNoEncontradoException;
+import com.famicup.excepcion.ReglaNegocioException;
 import com.famicup.modelo.dto.ActualizarParametrosRequest;
 import com.famicup.modelo.dto.ParametrosApuestasResponse;
 import com.famicup.modelo.entidad.ParametroSistema;
+import com.famicup.modelo.entidad.Usuario;
 import com.famicup.repositorio.ParametroSistemaRepository;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,8 @@ public class BettingParametersService {
     public static final String COLOMBIA_BET_AMOUNT = "COLOMBIA_BET_AMOUNT_COP";
     public static final String COLOMBIA_MAX_BETS = "COLOMBIA_MAX_BETS_PER_MATCH";
     public static final String GLOBAL_REGISTRATION_AMOUNT = "GLOBAL_REGISTRATION_AMOUNT_COP";
+    public static final String ORGANIZER_FEE_AMOUNT = "ORGANIZER_FEE_AMOUNT_COP";
+    public static final String GLOBAL_PRIZE_POOL_AMOUNT = "GLOBAL_PRIZE_POOL_AMOUNT_COP";
     public static final String CLOSING_MINUTES = "CLOSING_MINUTES_BEFORE_MATCH";
     public static final String GLOBAL_EXACT_POINTS = "GLOBAL_EXACT_POINTS";
     public static final String GLOBAL_WINNER_POINTS = "GLOBAL_WINNER_POINTS";
@@ -37,6 +43,9 @@ public class BettingParametersService {
     public static final String INTERSTITIAL_BANNER_TARGET_URL = "INTERSTITIAL_BANNER_TARGET_URL";
     public static final String INTERSTITIAL_BANNER_ALT_TEXT = "INTERSTITIAL_BANNER_ALT_TEXT";
     public static final String INTERSTITIAL_BANNER_DISMISS_HOURS = "INTERSTITIAL_BANNER_DISMISS_HOURS";
+    private static final BigDecimal CURRENT_COLOMBIA_BET_AMOUNT = BigDecimal.valueOf(5_000);
+    private static final int CURRENT_COLOMBIA_MAX_BETS = 3;
+    private static final ZoneId BOGOTA_ZONE = ZoneId.of("America/Bogota");
 
     private final ParametroSistemaRepository parameterRepository;
     private final AuditService auditService;
@@ -49,37 +58,30 @@ public class BettingParametersService {
     @Cacheable("systemParameters")
     @Transactional(readOnly = true)
     public ParametrosApuestasResponse getParameters() {
-        return new ParametrosApuestasResponse(
-                getDecimal(COLOMBIA_BET_AMOUNT),
-                getInt(COLOMBIA_MAX_BETS),
-                getDecimal(GLOBAL_REGISTRATION_AMOUNT),
-                getInt(CLOSING_MINUTES),
-                getInt(GLOBAL_EXACT_POINTS),
-                getInt(GLOBAL_WINNER_POINTS),
-                getInt(GLOBAL_PRIZE_FIRST),
-                getInt(GLOBAL_PRIZE_SECOND),
-                getInt(GLOBAL_PRIZE_THIRD),
-                getInt(GLOBAL_RESERVE),
-                getInt(WORLD_CHAMPION_POINTS),
-                getOffsetDateTime(WORLD_CHAMPION_LOCK_AT),
-                getText(ADMIN_WHATSAPP_NUMBER),
-                getText(FORGOT_PASSWORD_WHATSAPP_MESSAGE),
-                getText(REQUEST_ACCESS_WHATSAPP_MESSAGE),
-                getText(FORGOT_PASSWORD_MODAL_TEXT),
-                getText(REQUEST_ACCESS_MODAL_TEXT),
-                getBoolean(INTERSTITIAL_BANNER_ENABLED),
-                getText(INTERSTITIAL_BANNER_IMAGE_URL),
-                getText(INTERSTITIAL_BANNER_TARGET_URL),
-                getText(INTERSTITIAL_BANNER_ALT_TEXT),
-                getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
+        return buildParametersResponse();
     }
 
     @CacheEvict(value = "systemParameters", allEntries = true)
     @Transactional
     public ParametrosApuestasResponse updateParameters(ActualizarParametrosRequest request) {
-        updateDecimalIfPresent(COLOMBIA_BET_AMOUNT, request.colombiaBetAmount());
-        updateIntIfPresent(COLOMBIA_MAX_BETS, request.colombiaMaxBetsPerMatch());
+        return updateParameters(request, null);
+    }
+
+    @CacheEvict(value = "systemParameters", allEntries = true)
+    @Transactional
+    public ParametrosApuestasResponse updateParameters(ActualizarParametrosRequest request, Usuario admin) {
+        BigDecimal nextGlobalRegistrationAmount = request.globalRegistrationAmount() == null
+                ? getDecimal(GLOBAL_REGISTRATION_AMOUNT)
+                : request.globalRegistrationAmount();
+        BigDecimal nextOrganizerFeeAmount = request.organizerFeeAmount() == null
+                ? getDecimal(ORGANIZER_FEE_AMOUNT)
+                : request.organizerFeeAmount();
+        validateGlobalEconomicSplit(nextGlobalRegistrationAmount, nextOrganizerFeeAmount);
+
+        enforceCurrentColombiaRules();
         updateDecimalIfPresent(GLOBAL_REGISTRATION_AMOUNT, request.globalRegistrationAmount());
+        updateDecimalIfPresent(ORGANIZER_FEE_AMOUNT, request.organizerFeeAmount());
+        updateValue(GLOBAL_PRIZE_POOL_AMOUNT, calculateGlobalPrizePoolAmount(nextGlobalRegistrationAmount, nextOrganizerFeeAmount).toPlainString());
         updateIntIfPresent(CLOSING_MINUTES, request.closingMinutesBeforeMatch());
         updateIntIfPresent(GLOBAL_EXACT_POINTS, request.exactPoints());
         updateIntIfPresent(GLOBAL_WINNER_POINTS, request.winnerPoints());
@@ -87,6 +89,7 @@ public class BettingParametersService {
         updateIntIfPresent(GLOBAL_PRIZE_SECOND, request.globalPrizeSecondPercent());
         updateIntIfPresent(GLOBAL_PRIZE_THIRD, request.globalPrizeThirdPercent());
         updateIntIfPresent(GLOBAL_RESERVE, request.globalReservePercent());
+        updateWorldChampionLockAtIfPresent(request.worldChampionLockAt());
         updateTextIfPresent(ADMIN_WHATSAPP_NUMBER, request.adminWhatsappNumber());
         updateTextIfPresent(FORGOT_PASSWORD_WHATSAPP_MESSAGE, request.forgotPasswordWhatsappMessage());
         updateTextIfPresent(REQUEST_ACCESS_WHATSAPP_MESSAGE, request.requestAccessWhatsappMessage());
@@ -97,16 +100,24 @@ public class BettingParametersService {
         updateTextIfPresent(INTERSTITIAL_BANNER_TARGET_URL, request.interstitialBannerTargetUrl());
         updateTextIfPresent(INTERSTITIAL_BANNER_ALT_TEXT, request.interstitialBannerAltText());
         updateIntIfPresent(INTERSTITIAL_BANNER_DISMISS_HOURS, request.interstitialBannerDismissHours());
-        auditService.record(null, "PARAMETERS_UPDATE", "SYSTEM_PARAMETERS", "system", "Actualizo parametros del reglamento", "Parametros guardados");
+        auditService.record(admin, "PARAMETERS_UPDATE", "SYSTEM_PARAMETERS", "system", "Actualizo parametros del reglamento", "Parametros guardados");
         return getParametersNoCache();
     }
 
     @Transactional(readOnly = true)
     public ParametrosApuestasResponse getParametersNoCache() {
+        return buildParametersResponse();
+    }
+
+    private ParametrosApuestasResponse buildParametersResponse() {
+        BigDecimal globalRegistrationAmount = getDecimal(GLOBAL_REGISTRATION_AMOUNT);
+        BigDecimal organizerFeeAmount = getDecimal(ORGANIZER_FEE_AMOUNT);
         return new ParametrosApuestasResponse(
-                getDecimal(COLOMBIA_BET_AMOUNT),
-                getInt(COLOMBIA_MAX_BETS),
-                getDecimal(GLOBAL_REGISTRATION_AMOUNT),
+                CURRENT_COLOMBIA_BET_AMOUNT,
+                CURRENT_COLOMBIA_MAX_BETS,
+                globalRegistrationAmount,
+                organizerFeeAmount,
+                calculateGlobalPrizePoolAmount(globalRegistrationAmount, organizerFeeAmount),
                 getInt(CLOSING_MINUTES),
                 getInt(GLOBAL_EXACT_POINTS),
                 getInt(GLOBAL_WINNER_POINTS),
@@ -126,6 +137,22 @@ public class BettingParametersService {
                 getText(INTERSTITIAL_BANNER_TARGET_URL),
                 getText(INTERSTITIAL_BANNER_ALT_TEXT),
                 getInt(INTERSTITIAL_BANNER_DISMISS_HOURS));
+    }
+
+    private BigDecimal calculateGlobalPrizePoolAmount(BigDecimal globalRegistrationAmount, BigDecimal organizerFeeAmount) {
+        BigDecimal prizePoolAmount = globalRegistrationAmount.subtract(organizerFeeAmount);
+        return prizePoolAmount.signum() < 0 ? BigDecimal.ZERO : prizePoolAmount;
+    }
+
+    private void validateGlobalEconomicSplit(BigDecimal globalRegistrationAmount, BigDecimal organizerFeeAmount) {
+        if (organizerFeeAmount.compareTo(globalRegistrationAmount) > 0) {
+            throw new ReglaNegocioException("El aporte del organizador no puede superar la inscripcion global.");
+        }
+    }
+
+    private void enforceCurrentColombiaRules() {
+        updateValue(COLOMBIA_BET_AMOUNT, CURRENT_COLOMBIA_BET_AMOUNT.toPlainString());
+        updateValue(COLOMBIA_MAX_BETS, String.valueOf(CURRENT_COLOMBIA_MAX_BETS));
     }
 
     public int closingMinutesBeforeMatch() {
@@ -148,6 +175,10 @@ public class BettingParametersService {
         return getParameters().worldChampionLockAt();
     }
 
+    public BigDecimal globalRegistrationAmount() {
+        return getParameters().globalRegistrationAmount();
+    }
+
     private int getInt(String key) {
         return Integer.parseInt(getValue(key));
     }
@@ -166,7 +197,14 @@ public class BettingParametersService {
 
     private OffsetDateTime getOffsetDateTime(String key) {
         String value = getValue(key);
-        return value == null || value.isBlank() ? null : OffsetDateTime.parse(value);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return OffsetDateTime.parse(value);
+        } catch (java.time.format.DateTimeParseException ignored) {
+            return LocalDateTime.parse(value).atZone(BOGOTA_ZONE).toOffsetDateTime();
+        }
     }
 
     private String getValue(String key) {
@@ -196,6 +234,26 @@ public class BettingParametersService {
     private void updateTextIfPresent(String key, String value) {
         if (value != null) {
             updateValue(key, value.trim());
+        }
+    }
+
+    private void updateWorldChampionLockAtIfPresent(String value) {
+        if (value == null) {
+            return;
+        }
+        String normalizedValue = value.trim();
+        if (normalizedValue.isBlank()) {
+            throw new ReglaNegocioException("La fecha de cierre de campeon mundial no puede estar vacia.");
+        }
+        getOffsetDateTimeFromValue(normalizedValue);
+        updateValue(WORLD_CHAMPION_LOCK_AT, normalizedValue);
+    }
+
+    private OffsetDateTime getOffsetDateTimeFromValue(String value) {
+        try {
+            return OffsetDateTime.parse(value);
+        } catch (java.time.format.DateTimeParseException ignored) {
+            return LocalDateTime.parse(value).atZone(BOGOTA_ZONE).toOffsetDateTime();
         }
     }
 
