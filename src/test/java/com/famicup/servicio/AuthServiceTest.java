@@ -1,17 +1,21 @@
 package com.famicup.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.famicup.configuracion.JwtProperties;
+import com.famicup.excepcion.ReglaNegocioException;
 import com.famicup.modelo.dto.LoginRequest;
 import com.famicup.modelo.entidad.SesionAutenticacion;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoUsuario;
 import com.famicup.modelo.enumeracion.RolUsuario;
 import com.famicup.modelo.mapper.UsuarioMapper;
+import com.famicup.modelo.validacion.PasswordPolicy;
 import com.famicup.repositorio.SesionAutenticacionRepository;
 import com.famicup.repositorio.UsuarioRepository;
 import com.famicup.seguridad.JwtService;
@@ -75,5 +79,13 @@ class AuthServiceTest {
         assertThat(response.refreshToken()).isNotBlank();
         assertThat(response.user().username()).isEqualTo("tia.maria");
         verify(sessionRepository).save(any(SesionAutenticacion.class));
+    }
+
+    @Test
+    void loginRejectsPasswordShorterThanPolicyBeforeAuthentication() {
+        assertThatThrownBy(() -> authService.login(new LoginRequest("tia.maria", "12")))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessage(PasswordPolicy.MIN_LENGTH_MESSAGE);
+        verifyNoInteractions(authenticationManager);
     }
 }

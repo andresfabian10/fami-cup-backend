@@ -9,6 +9,7 @@ import com.famicup.modelo.dto.UsuarioResponse;
 import com.famicup.modelo.entidad.SesionAutenticacion;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.mapper.UsuarioMapper;
+import com.famicup.modelo.validacion.PasswordPolicy;
 import com.famicup.repositorio.SesionAutenticacionRepository;
 import com.famicup.repositorio.UsuarioRepository;
 import com.famicup.seguridad.JwtService;
@@ -52,9 +53,10 @@ public class AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request) {
         String username = request.username().trim().toLowerCase();
+        String password = PasswordPolicy.normalizeAndValidate(request.password());
         Authentication authentication;
         try {
-            authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, request.password()));
+            authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
         } catch (AuthenticationException exception) {
             auditService.recordAnonymous(username, "LOGIN_FAILED", "AUTH", username, "Intento de login fallido", "Credenciales invalidas");
             throw exception;
