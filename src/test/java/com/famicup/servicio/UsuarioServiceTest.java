@@ -13,6 +13,7 @@ import com.famicup.modelo.dto.ParametrosApuestasResponse;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.RolUsuario;
 import com.famicup.modelo.mapper.UsuarioMapper;
+import com.famicup.modelo.validacion.PasswordPolicy;
 import com.famicup.repositorio.PagoRepository;
 import com.famicup.repositorio.PuntosRankingRepository;
 import com.famicup.repositorio.UsuarioRepository;
@@ -96,6 +97,16 @@ class UsuarioServiceTest {
         assertThat(response.passwordChangedAt()).isNotNull();
         assertThat(new BCryptPasswordEncoder().matches("abc", user.getPasswordHash())).isTrue();
         verify(usuarioRepository).save(user);
+    }
+
+    @Test
+    void rejectsTemporaryPasswordShorterThanPolicy() {
+        Usuario user = new Usuario();
+        user.setId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> usuarioService.changeCurrentUserPassword(user, new CambiarPasswordRequest("12")))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessage(PasswordPolicy.MIN_LENGTH_MESSAGE);
     }
 
     @Test

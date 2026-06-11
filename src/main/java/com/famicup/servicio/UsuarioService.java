@@ -14,6 +14,7 @@ import com.famicup.modelo.enumeracion.EstadoUsuario;
 import com.famicup.modelo.enumeracion.RolUsuario;
 import com.famicup.modelo.enumeracion.SistemaPago;
 import com.famicup.modelo.mapper.UsuarioMapper;
+import com.famicup.modelo.validacion.PasswordPolicy;
 import com.famicup.repositorio.PagoRepository;
 import com.famicup.repositorio.PuntosRankingRepository;
 import com.famicup.repositorio.UsuarioRepository;
@@ -64,6 +65,7 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponse createUser(CrearUsuarioRequest request) {
         String username = request.username().trim().toLowerCase();
+        String password = PasswordPolicy.normalizeAndValidate(request.password());
         if (usuarioRepository.existsByUsernameIgnoreCase(username)) {
             throw new ReglaNegocioException("Ya existe un usuario con ese username.");
         }
@@ -73,7 +75,7 @@ public class UsuarioService {
 
         Usuario user = new Usuario();
         user.setUsername(username);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(password));
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email());
         user.setPhone(request.phone());
@@ -119,8 +121,9 @@ public class UsuarioService {
         if (request.phone() != null) {
             user.setPhone(request.phone());
         }
-        if (request.password() != null && !request.password().isBlank()) {
-            user.setPasswordHash(passwordEncoder.encode(request.password()));
+        String password = PasswordPolicy.normalizeOptionalAndValidate(request.password());
+        if (password != null) {
+            user.setPasswordHash(passwordEncoder.encode(password));
             if (user.getRole() == RolUsuario.PLAYER) {
                 user.setMustChangePassword(true);
                 user.setPasswordChangedAt(null);
@@ -147,10 +150,7 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponse changeCurrentUserPassword(Usuario user, CambiarPasswordRequest request) {
-        String newPassword = request.newPassword().trim();
-        if (newPassword.length() < 3) {
-            throw new ReglaNegocioException("La nueva contraseña debe tener al menos 3 caracteres.");
-        }
+        String newPassword = PasswordPolicy.normalizeAndValidate(request.newPassword());
 
         Usuario managedUser = usuarioRepository.findById(user.getId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado."));

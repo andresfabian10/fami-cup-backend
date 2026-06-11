@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,10 +42,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorResponse> validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
-        List<String> details = exception.getBindingResult().getFieldErrors().stream()
+        List<FieldError> fieldErrors = exception.getBindingResult().getFieldErrors();
+        List<String> details = fieldErrors.stream()
                 .map(this::formatFieldError)
                 .toList();
-        return build(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos.", request, details);
+        String message = fieldErrors.stream()
+                .filter(error -> error.getField().toLowerCase(Locale.ROOT).contains("password"))
+                .map(FieldError::getDefaultMessage)
+                .filter(defaultMessage -> defaultMessage != null && !defaultMessage.isBlank())
+                .findFirst()
+                .orElse("La solicitud tiene campos invalidos.");
+        return build(HttpStatus.BAD_REQUEST, message, request, details);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
