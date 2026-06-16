@@ -40,6 +40,8 @@ public class ColombiaBetsService {
     private final BettingParametersService parametersService;
     private final ApuestaMapper apuestaMapper;
     private final AuditService auditService;
+    private final PredictionScoringService scoringService;
+    private final RankingService rankingService;
 
     public ColombiaBetsService(
             ApuestaColombiaRepository betRepository,
@@ -48,7 +50,9 @@ public class ColombiaBetsService {
             PartidoService partidoService,
             BettingParametersService parametersService,
             ApuestaMapper apuestaMapper,
-            AuditService auditService) {
+            AuditService auditService,
+            PredictionScoringService scoringService,
+            RankingService rankingService) {
         this.betRepository = betRepository;
         this.pagoRepository = pagoRepository;
         this.predictionRepository = predictionRepository;
@@ -56,6 +60,8 @@ public class ColombiaBetsService {
         this.parametersService = parametersService;
         this.apuestaMapper = apuestaMapper;
         this.auditService = auditService;
+        this.scoringService = scoringService;
+        this.rankingService = rankingService;
     }
 
     @Transactional
@@ -437,6 +443,10 @@ public class ColombiaBetsService {
         if (principalBet.getUpdatedByAdmin() != null) {
             prediction.setUpdatedByAdmin(principalBet.getUpdatedByAdmin());
         }
+        boolean evaluated = scoringService.evaluateIfResultExists(prediction);
         predictionRepository.save(prediction);
+        if (evaluated) {
+            rankingService.recalculateAll();
+        }
     }
 }

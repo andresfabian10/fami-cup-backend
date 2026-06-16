@@ -58,8 +58,9 @@ public class DashboardService {
                 ranking);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PlayerDashboardResponse playerDashboard(Usuario user) {
+        var activePredictions = globalPredictionService.history(user).stream().limit(5).toList();
         List<RankingResponse> ranking = rankingService.getRanking(user.getId());
         int position = ranking.stream()
                 .filter(row -> row.userId().equals(user.getId()))
@@ -79,11 +80,11 @@ public class DashboardService {
                 ranking.size(),
                 points,
                 globalPaymentStatus,
-                globalPredictionService.history(user).stream().limit(5).toList(),
+                activePredictions,
                 pagoService.listPaymentsByUser(user));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public HistorialJugadorResponse playerHistory(Usuario user) {
         return new HistorialJugadorResponse(
                 colombiaBetsService.history(user),

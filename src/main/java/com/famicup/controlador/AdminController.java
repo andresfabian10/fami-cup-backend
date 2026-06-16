@@ -12,12 +12,15 @@ import com.famicup.modelo.dto.AdminPredictionsResponse;
 import com.famicup.modelo.dto.CrearApuestasColombiaRequest;
 import com.famicup.modelo.dto.CrearUsuarioRequest;
 import com.famicup.modelo.dto.GuardarPronosticoGlobalRequest;
+import com.famicup.modelo.dto.GuardarResultadoManualRequest;
 import com.famicup.modelo.dto.ManualEntryHistoryResponse;
 import com.famicup.modelo.dto.PagoResponse;
 import com.famicup.modelo.dto.ParametrosApuestasResponse;
 import com.famicup.modelo.dto.PartidoDto;
 import com.famicup.modelo.dto.PronosticoCampeonMundialResponse;
 import com.famicup.modelo.dto.PronosticoGlobalResponse;
+import com.famicup.modelo.dto.ResultadoManualResponse;
+import com.famicup.modelo.dto.ScoringRecalculationResponse;
 import com.famicup.modelo.dto.SyncResponse;
 import com.famicup.modelo.dto.UsuarioResponse;
 import com.famicup.modelo.entidad.Usuario;
@@ -30,7 +33,9 @@ import com.famicup.servicio.AuditService;
 import com.famicup.servicio.BettingParametersService;
 import com.famicup.servicio.DashboardService;
 import com.famicup.servicio.EvidenceExportService;
+import com.famicup.servicio.ManualResultService;
 import com.famicup.servicio.PagoService;
+import com.famicup.servicio.PredictionScoringService;
 import com.famicup.servicio.UsuarioService;
 import com.famicup.servicio.WorldChampionPredictionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -79,6 +84,8 @@ public class AdminController {
     private final AuditService auditService;
     private final AuditExportService auditExportService;
     private final EvidenceExportService evidenceExportService;
+    private final PredictionScoringService scoringService;
+    private final ManualResultService manualResultService;
 
     public AdminController(
             DashboardService dashboardService,
@@ -92,7 +99,9 @@ public class AdminController {
             WorldChampionPredictionService championPredictionService,
             AuditService auditService,
             AuditExportService auditExportService,
-            EvidenceExportService evidenceExportService) {
+            EvidenceExportService evidenceExportService,
+            PredictionScoringService scoringService,
+            ManualResultService manualResultService) {
         this.dashboardService = dashboardService;
         this.usuarioService = usuarioService;
         this.pagoService = pagoService;
@@ -105,6 +114,8 @@ public class AdminController {
         this.auditService = auditService;
         this.auditExportService = auditExportService;
         this.evidenceExportService = evidenceExportService;
+        this.scoringService = scoringService;
+        this.manualResultService = manualResultService;
     }
 
     @GetMapping("/dashboard")
@@ -188,6 +199,17 @@ public class AdminController {
         return syncService.syncResults();
     }
 
+    @PostMapping("/scoring/recalculate")
+    @Operation(summary = "Recalcular puntos", description = "Recalcula puntos de Polla Global de forma idempotente. Permite matchId o rango de fechas y dryRun.")
+    public ScoringRecalculationResponse recalculateScoring(
+            Authentication authentication,
+            @RequestParam(required = false) Long matchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "false") boolean dryRun) {
+        return scoringService.recalculate(usuarioService.getCurrentUser(authentication), matchId, from, to, dryRun);
+    }
+
     @GetMapping("/world-champion-predictions")
     @Operation(summary = "Pronosticos de campeon mundial", description = "Lista la seleccion de campeon mundial hecha por jugadores. Rol permitido: ADMIN.")
     public List<PronosticoCampeonMundialResponse> worldChampionPredictions() {
@@ -268,6 +290,15 @@ public class AdminController {
     @Operation(summary = "Eliminar pronostico global manualmente", description = "Permite al ADMIN eliminar un pronostico global no evaluado.")
     public void deleteManualGlobalPrediction(Authentication authentication, @PathVariable UUID predictionId) {
         manualEntryService.deleteGlobalPrediction(usuarioService.getCurrentUser(authentication), predictionId);
+    }
+
+    @PutMapping("/manual-entry/matches/{matchId}/result")
+    @Operation(summary = "Guardar resultado manual", description = "Guarda o corrige el resultado 90 minutos de un partido y recalcula puntos/ranking.")
+    public ResultadoManualResponse saveManualResult(
+            Authentication authentication,
+            @PathVariable Long matchId,
+            @Valid @RequestBody GuardarResultadoManualRequest request) {
+        return manualResultService.saveManualResult(usuarioService.getCurrentUser(authentication), matchId, request);
     }
 
     @GetMapping("/audit/entries")

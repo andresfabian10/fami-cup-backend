@@ -29,18 +29,22 @@ public class ResultsCenterService {
     private final PartidoRepository partidoRepository;
     private final PronosticoGlobalRepository predictionRepository;
     private final PartidoMapper partidoMapper;
+    private final PredictionScoringService scoringService;
 
     public ResultsCenterService(
             PartidoRepository partidoRepository,
             PronosticoGlobalRepository predictionRepository,
-            PartidoMapper partidoMapper) {
+            PartidoMapper partidoMapper,
+            PredictionScoringService scoringService) {
         this.partidoRepository = partidoRepository;
         this.predictionRepository = predictionRepository;
         this.partidoMapper = partidoMapper;
+        this.scoringService = scoringService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ResultsCenterResponse getResultsCenter(Usuario user) {
+        scoringService.repairUserPredictionsWithResults(user);
         List<Partido> matches = partidoRepository.findAllWithTeamsOrderByKickoffAtUtcAsc();
         Map<Long, PronosticoGlobal> predictionsByMatchId = predictionsByMatchId(user, matches);
         Map<GroupKey, List<ResultsCenterResponse.Match>> groupedMatches = new LinkedHashMap<>();
