@@ -90,7 +90,9 @@ public class PlayerController {
     @GetMapping("/dashboard")
     @Operation(summary = "Dashboard jugador", description = "Resumen personal de posicion, puntos, pagos y pronosticos recientes. Rol permitido: PLAYER.")
     public PlayerDashboardResponse dashboard(Authentication authentication) {
-        return dashboardService.playerDashboard(currentUser(authentication));
+        Usuario user = currentUser(authentication);
+        scoringService.repairPredictionsWithResults(user, "SCORING_AUTO_REPAIR_PLAYER_DASHBOARD_VIEW");
+        return dashboardService.playerDashboard(user);
     }
 
     @GetMapping("/history")
@@ -103,7 +105,7 @@ public class PlayerController {
     @Operation(summary = "Ranking familiar", description = "Ranking global por puntos con desempates: exactos, ganadores y desempeño en partidos de Colombia.")
     public List<RankingResponse> ranking(Authentication authentication) {
         Usuario user = currentUser(authentication);
-        scoringService.repairUserPredictionsWithResults(user);
+        scoringService.repairPredictionsWithResults(user, "SCORING_AUTO_REPAIR_PLAYER_RANKING_VIEW");
         return rankingService.getRanking(user.getId());
     }
 

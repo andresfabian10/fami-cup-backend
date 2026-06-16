@@ -40,6 +40,8 @@ public record AdminPredictionsResponse(
             String adminStatus,
             int points,
             int possiblePoints,
+            String pointsReason,
+            String pointsStatus,
             OffsetDateTime registeredAt,
             OffsetDateTime updatedAt) {
     }
