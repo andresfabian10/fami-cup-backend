@@ -119,6 +119,24 @@ Se evaluaron tres alternativas para el ranking general por puntos:
 - Cualquier otro caso = **0 puntos**
 - Campeón mundial acertado = **10 puntos extra**
 
+**Fuente oficial para el motor de puntuación de partidos:**
+
+| Resultado real | Pronóstico | Regla | Puntos |
+| ----- | ----- | ----- | :---: |
+| 2-1 | 2-1 | Marcador exacto | 5 |
+| 2-1 | 1-0 | Ganador acertado sin marcador exacto | 2 |
+| 2-1 | 0-1 | Pronóstico incorrecto | 0 |
+| 0-0 | 0-0 | Empate exacto | 5 |
+| 0-0 | 1-1 | Empate acertado sin marcador exacto | 2 |
+| 0-0 | 1-0 | Pronóstico incorrecto | 0 |
+| 5-1 | 2-1 | Ganador acertado sin marcador exacto | 2 |
+| 1-5 | 1-2 | Ganador acertado sin marcador exacto | 2 |
+| 1-5 | 2-1 | Pronóstico incorrecto | 0 |
+| 2-2 | 1-1 | Empate acertado sin marcador exacto | 2 |
+| 2-2 | 2-2 | Empate exacto | 5 |
+
+Si el partido ya tiene resultado final de 90 minutos más reposición, ningún pronóstico válido debe quedar indefinidamente como pendiente de cálculo: debe evaluarse con esta tabla y reflejarse en historial, centro de resultados y ranking. Si el resultado aún no existe, la interfaz debe mostrar `Pendiente de resultado`.
+
 **Regla para eliminación directa:** si un partido se define en alargue o penales, esos goles o esa tanda no modifican el puntaje de la Polla Global. Si el partido terminó empatado al cierre de los 90 minutos más reposición, cuenta como empate para puntos, aunque después haya un ganador por penales.
 
 ---

@@ -34,6 +34,8 @@ class ResultsCenterServiceTest {
     private PronosticoGlobalRepository predictionRepository;
     @Mock
     private ResultadoPartidoRepository resultRepository;
+    @Mock
+    private PredictionScoringService scoringService;
 
     private ResultsCenterService service;
 
@@ -42,7 +44,8 @@ class ResultsCenterServiceTest {
         service = new ResultsCenterService(
                 partidoRepository,
                 predictionRepository,
-                new PartidoMapper(resultRepository));
+                new PartidoMapper(resultRepository),
+                scoringService);
     }
 
     @Test

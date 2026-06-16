@@ -52,12 +52,25 @@ class ColombiaBetsServiceTest {
     private ApuestaMapper apuestaMapper;
     @Mock
     private AuditService auditService;
+    @Mock
+    private PredictionScoringService scoringService;
+    @Mock
+    private RankingService rankingService;
 
     private ColombiaBetsService service;
 
     @BeforeEach
     void setUp() {
-        service = new ColombiaBetsService(betRepository, pagoRepository, predictionRepository, partidoService, parametersService, apuestaMapper, auditService);
+        service = new ColombiaBetsService(
+                betRepository,
+                pagoRepository,
+                predictionRepository,
+                partidoService,
+                parametersService,
+                apuestaMapper,
+                auditService,
+                scoringService,
+                rankingService);
         lenient().when(predictionRepository.findByUserAndMatch(any(), any())).thenReturn(Optional.empty());
         lenient().when(betRepository.findFirstByUserAndMatchAndPrincipalGlobalPredictionTrue(any(), any())).thenReturn(Optional.empty());
     }

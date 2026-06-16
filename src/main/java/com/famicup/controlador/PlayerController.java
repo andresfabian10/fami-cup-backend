@@ -21,6 +21,7 @@ import com.famicup.servicio.ColombiaBetsService;
 import com.famicup.servicio.DashboardService;
 import com.famicup.servicio.GlobalPredictionService;
 import com.famicup.servicio.PartidoService;
+import com.famicup.servicio.PredictionScoringService;
 import com.famicup.servicio.RankingService;
 import com.famicup.servicio.ResultsCenterService;
 import com.famicup.servicio.UsuarioService;
@@ -61,6 +62,7 @@ public class PlayerController {
     private final BettingParametersService parametersService;
     private final WorldChampionPredictionService championPredictionService;
     private final ResultsCenterService resultsCenterService;
+    private final PredictionScoringService scoringService;
 
     public PlayerController(
             UsuarioService usuarioService,
@@ -71,7 +73,8 @@ public class PlayerController {
             RankingService rankingService,
             BettingParametersService parametersService,
             WorldChampionPredictionService championPredictionService,
-            ResultsCenterService resultsCenterService) {
+            ResultsCenterService resultsCenterService,
+            PredictionScoringService scoringService) {
         this.usuarioService = usuarioService;
         this.dashboardService = dashboardService;
         this.partidoService = partidoService;
@@ -81,6 +84,7 @@ public class PlayerController {
         this.parametersService = parametersService;
         this.championPredictionService = championPredictionService;
         this.resultsCenterService = resultsCenterService;
+        this.scoringService = scoringService;
     }
 
     @GetMapping("/dashboard")
@@ -98,7 +102,9 @@ public class PlayerController {
     @GetMapping("/ranking")
     @Operation(summary = "Ranking familiar", description = "Ranking global por puntos con desempates: exactos, ganadores y desempeño en partidos de Colombia.")
     public List<RankingResponse> ranking(Authentication authentication) {
-        return rankingService.getRanking(currentUser(authentication).getId());
+        Usuario user = currentUser(authentication);
+        scoringService.repairUserPredictionsWithResults(user);
+        return rankingService.getRanking(user.getId());
     }
 
     @GetMapping("/parameters")

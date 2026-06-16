@@ -62,4 +62,12 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
             order by p.kickoffAtUtc asc
             """)
     List<Partido> findByKickoffAtUtcBetweenWithTeams(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
+
+    @Query("""
+            select p from Partido p
+            where (:from is null or p.kickoffAtUtc >= :from)
+              and (:to is null or p.kickoffAtUtc < :to)
+            order by p.kickoffAtUtc asc
+            """)
+    List<Partido> findForScoringRange(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
 }

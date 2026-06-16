@@ -7,14 +7,11 @@ import com.famicup.modelo.dto.GuardarPronosticoGlobalRequest;
 import com.famicup.modelo.dto.PronosticoGlobalResponse;
 import com.famicup.modelo.entidad.Partido;
 import com.famicup.modelo.entidad.PronosticoGlobal;
-import com.famicup.modelo.entidad.ResultadoPartido;
 import com.famicup.modelo.entidad.Usuario;
 import com.famicup.modelo.enumeracion.EstadoPronostico;
-import com.famicup.modelo.enumeracion.GanadorPartido;
 import com.famicup.modelo.enumeracion.OrigenRegistro;
 import com.famicup.modelo.mapper.ApuestaMapper;
 import com.famicup.repositorio.PronosticoGlobalRepository;
-import com.famicup.repositorio.ResultadoPartidoRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -26,32 +23,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class GlobalPredictionService {
 
     private final PronosticoGlobalRepository predictionRepository;
-    private final ResultadoPartidoRepository resultRepository;
     private final PartidoService partidoService;
-    private final BettingParametersService parametersService;
     private final RankingService rankingService;
     private final ApuestaMapper apuestaMapper;
     private final AuditService auditService;
+    private final PredictionScoringService scoringService;
 
     public GlobalPredictionService(
             PronosticoGlobalRepository predictionRepository,
-            ResultadoPartidoRepository resultRepository,
             PartidoService partidoService,
-            BettingParametersService parametersService,
             RankingService rankingService,
             ApuestaMapper apuestaMapper,
-            AuditService auditService) {
+            AuditService auditService,
+            PredictionScoringService scoringService) {
         this.predictionRepository = predictionRepository;
-        this.resultRepository = resultRepository;
         this.partidoService = partidoService;
-        this.parametersService = parametersService;
         this.rankingService = rankingService;
         this.apuestaMapper = apuestaMapper;
         this.auditService = auditService;
+        this.scoringService = scoringService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PronosticoGlobalResponse> history(Usuario user) {
+        scoringService.repairUserPredictionsWithResults(user);
         return predictionRepository.findByUserOrderByRegisteredAtDesc(user).stream()
                 .map(apuestaMapper::toGlobalResponse)
                 .toList();
@@ -106,7 +101,11 @@ public class GlobalPredictionService {
                 .orElseGet(PronosticoGlobal::new);
         boolean newPrediction = prediction.getId() == null;
         applyManualPredictionValues(prediction, player, match, request.homeGoals(), request.awayGoals(), admin, newPrediction);
+        boolean evaluated = scoringService.evaluateIfResultExists(prediction);
         PronosticoGlobal saved = predictionRepository.save(prediction);
+        if (evaluated) {
+            rankingService.recalculateAll();
+        }
         auditService.record(
                 admin,
                 "MANUAL_GLOBAL_PREDICTION_SAVE",
@@ -133,6 +132,10 @@ public class GlobalPredictionService {
                 });
 
         applyManualPredictionValues(prediction, prediction.getUser(), match, request.homeGoals(), request.awayGoals(), admin, false);
+        boolean evaluated = scoringService.evaluateIfResultExists(prediction);
+        if (evaluated) {
+            rankingService.recalculateAll();
+        }
         auditService.record(
                 admin,
                 "MANUAL_GLOBAL_PREDICTION_UPDATE",
@@ -165,28 +168,7 @@ public class GlobalPredictionService {
     @CacheEvict(value = "ranking", allEntries = true)
     @Transactional
     public void evaluateMatch(Partido match) {
-        ResultadoPartido result = resultRepository.findByMatchId(match.getId()).orElse(null);
-        if (result == null) {
-            return;
-        }
-        List<PronosticoGlobal> predictions = predictionRepository.findByMatch(match);
-        for (PronosticoGlobal prediction : predictions) {
-            evaluatePrediction(prediction, result);
-        }
-        rankingService.recalculateAll();
-    }
-
-    private void evaluatePrediction(PronosticoGlobal prediction, ResultadoPartido result) {
-        boolean exact = prediction.getPredictedHomeGoals().equals(result.getHomeGoals90())
-                && prediction.getPredictedAwayGoals().equals(result.getAwayGoals90());
-        boolean winner = winnerOf(prediction.getPredictedHomeGoals(), prediction.getPredictedAwayGoals()) == result.getWinner90();
-        int points = exact ? parametersService.getParameters().exactPoints() : (winner ? parametersService.getParameters().winnerPoints() : 0);
-
-        prediction.setExactHit(exact);
-        prediction.setWinnerHit(!exact && winner);
-        prediction.setPoints(points);
-        prediction.setStatus(EstadoPronostico.EVALUATED);
-        prediction.setEvaluatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        scoringService.recalculateMatch(match, null, false, "SCORING_RECALCULATE_AUTO_RESULT");
     }
 
     private void applyManualPredictionValues(
@@ -214,13 +196,4 @@ public class GlobalPredictionService {
         }
     }
 
-    private GanadorPartido winnerOf(int homeGoals, int awayGoals) {
-        if (homeGoals > awayGoals) {
-            return GanadorPartido.HOME;
-        }
-        if (awayGoals > homeGoals) {
-            return GanadorPartido.AWAY;
-        }
-        return GanadorPartido.DRAW;
-    }
 }
