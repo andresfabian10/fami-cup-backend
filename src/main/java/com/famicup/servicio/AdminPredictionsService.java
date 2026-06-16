@@ -46,22 +46,27 @@ public class AdminPredictionsService {
     private final PronosticoCampeonMundialRepository championPredictionRepository;
     private final PartidoMapper partidoMapper;
     private final BettingParametersService parametersService;
+    private final PredictionScoringService scoringService;
 
     public AdminPredictionsService(
             ApuestaColombiaRepository colombiaBetRepository,
             PronosticoGlobalRepository globalPredictionRepository,
             PronosticoCampeonMundialRepository championPredictionRepository,
             PartidoMapper partidoMapper,
-            BettingParametersService parametersService) {
+            BettingParametersService parametersService,
+            PredictionScoringService scoringService) {
         this.colombiaBetRepository = colombiaBetRepository;
         this.globalPredictionRepository = globalPredictionRepository;
         this.championPredictionRepository = championPredictionRepository;
         this.partidoMapper = partidoMapper;
         this.parametersService = parametersService;
+        this.scoringService = scoringService;
     }
 
-    @Transactional(readOnly = true)
-    public AdminPredictionsResponse listPredictions() {
+    @Transactional
+    public AdminPredictionsResponse listPredictions(Usuario admin) {
+        scoringService.repairPredictionsWithResults(admin, "SCORING_AUTO_REPAIR_ADMIN_PREDICTIONS_VIEW");
+
         ParametrosApuestasResponse parameters = parametersService.getParameters();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         List<ApuestaColombia> colombiaBets = colombiaBetRepository.findAllByOrderByRegisteredAtDesc();
@@ -102,6 +107,8 @@ public class AdminPredictionsService {
                 colombiaStatus(bet, parameters, now),
                 0,
                 bet.isPrincipalGlobalPrediction() ? parameters.exactPoints() : 0,
+                null,
+                null,
                 bet.getRegisteredAt(),
                 bet.getUpdatedAt());
     }
@@ -109,6 +116,7 @@ public class AdminPredictionsService {
     private AdminPredictionsResponse.Item toGlobalItem(PronosticoGlobal prediction, ParametrosApuestasResponse parameters, OffsetDateTime now) {
         PartidoDto matchDto = partidoMapper.toDto(prediction.getMatch());
         String predictionLabel = scoreLabel(prediction.getPredictedHomeGoals(), prediction.getPredictedAwayGoals());
+        PredictionScoringService.ScoringDecision decision = scoringDecision(prediction, matchDto);
         return new AdminPredictionsResponse.Item(
                 prediction.getId(),
                 MODALITY_GLOBAL,
@@ -124,6 +132,8 @@ public class AdminPredictionsService {
                 globalStatus(prediction, parameters, now),
                 prediction.getPoints(),
                 parameters.exactPoints(),
+                decision.reason(),
+                decision.status(),
                 prediction.getRegisteredAt(),
                 prediction.getUpdatedAt());
     }
@@ -145,6 +155,8 @@ public class AdminPredictionsService {
                 championStatus(prediction, parameters, now),
                 prediction.getPoints(),
                 parameters.worldChampionPoints(),
+                null,
+                null,
                 prediction.getCreatedAt(),
                 prediction.getUpdatedAt());
     }
@@ -245,6 +257,16 @@ public class AdminPredictionsService {
             return null;
         }
         return scoreLabel(match.result().homeGoals90(), match.result().awayGoals90());
+    }
+
+    private PredictionScoringService.ScoringDecision scoringDecision(PronosticoGlobal prediction, PartidoDto match) {
+        Integer homeScoreReal = match.result() == null ? null : match.result().homeGoals90();
+        Integer awayScoreReal = match.result() == null ? null : match.result().awayGoals90();
+        return scoringService.calculate(
+                homeScoreReal,
+                awayScoreReal,
+                prediction.getPredictedHomeGoals(),
+                prediction.getPredictedAwayGoals());
     }
 
     private String matchLabel(Partido match) {

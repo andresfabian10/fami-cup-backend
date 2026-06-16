@@ -89,8 +89,16 @@ public class PredictionScoringService {
         if (result == null || prediction.getStatus() == EstadoPronostico.ANNULLED) {
             return false;
         }
-        applyDecision(prediction, result, OffsetDateTime.now(ZoneOffset.UTC));
-        return true;
+        ScoringDecision decision = calculate(
+                result.getHomeGoals90(),
+                result.getAwayGoals90(),
+                prediction.getPredictedHomeGoals(),
+                prediction.getPredictedAwayGoals());
+        boolean changed = predictionChanged(prediction, decision);
+        if (changed) {
+            applyDecision(prediction, decision, OffsetDateTime.now(ZoneOffset.UTC));
+        }
+        return changed;
     }
 
     @CacheEvict(value = "ranking", allEntries = true)
@@ -98,7 +106,7 @@ public class PredictionScoringService {
     public int repairUserPredictionsWithResults(Usuario user) {
         int repaired = 0;
         for (PronosticoGlobal prediction : predictionRepository.findByUserOrderByRegisteredAtDesc(user)) {
-            if (prediction.getStatus() == EstadoPronostico.EVALUATED || prediction.getStatus() == EstadoPronostico.ANNULLED) {
+            if (prediction.getStatus() == EstadoPronostico.ANNULLED) {
                 continue;
             }
             if (evaluateIfResultExists(prediction)) {
@@ -116,6 +124,21 @@ public class PredictionScoringService {
                     "Pronosticos reparados: " + repaired);
         }
         return repaired;
+    }
+
+    @CacheEvict(value = "ranking", allEntries = true)
+    @Transactional
+    public ScoringRecalculationResponse repairPredictionsWithResults(Usuario actor, String action) {
+        ScoringAccumulator accumulator = new ScoringAccumulator(false, null, null, null);
+        processMatches(partidoRepository.findAllForScoring(), false, accumulator);
+        ScoringRecalculationResponse response = accumulator.toResponse();
+        if (response.predictionsUpdated() > 0) {
+            rankingService.recalculateAll();
+        }
+        if (response.predictionsUpdated() > 0 || response.errorsFound() > 0) {
+            auditRecalculation(actor, action, response);
+        }
+        return response;
     }
 
     @CacheEvict(value = "ranking", allEntries = true)
@@ -139,10 +162,15 @@ public class PredictionScoringService {
 
         OffsetDateTime fromUtc = startOfDayUtc(from);
         OffsetDateTime toUtc = endExclusiveUtc(to);
-        List<Partido> matches = matchId == null
-                ? partidoRepository.findForScoringRange(fromUtc, toUtc)
-                : List.of(partidoRepository.findById(matchId)
-                        .orElseThrow(() -> new ReglaNegocioException("Partido no encontrado para recalculo.")));
+        List<Partido> matches;
+        if (matchId != null) {
+            matches = List.of(partidoRepository.findById(matchId)
+                    .orElseThrow(() -> new ReglaNegocioException("Partido no encontrado para recalculo.")));
+        } else if (fromUtc == null && toUtc == null) {
+            matches = partidoRepository.findAllForScoring();
+        } else {
+            matches = partidoRepository.findForScoringRange(fromUtc, toUtc);
+        }
 
         ScoringAccumulator accumulator = new ScoringAccumulator(dryRun, matchId, fromUtc, toUtc);
         processMatches(matches, dryRun, accumulator);
@@ -184,7 +212,7 @@ public class PredictionScoringService {
                     } else {
                         accumulator.predictionsUnchanged++;
                     }
-                    if (!dryRun) {
+                    if (!dryRun && changed) {
                         applyDecision(prediction, decision, now);
                     }
                 } catch (RuntimeException exception) {

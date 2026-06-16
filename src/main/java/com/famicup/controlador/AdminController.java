@@ -120,7 +120,8 @@ public class AdminController {
 
     @GetMapping("/dashboard")
     @Operation(summary = "Dashboard administrador", description = "Resumen de participantes, pagos, proximos partidos y top de ranking. Rol permitido: ADMIN.")
-    public AdminDashboardResponse dashboard() {
+    public AdminDashboardResponse dashboard(Authentication authentication) {
+        scoringService.repairPredictionsWithResults(usuarioService.getCurrentUser(authentication), "SCORING_AUTO_REPAIR_ADMIN_DASHBOARD_VIEW");
         return dashboardService.adminDashboard();
     }
 
@@ -218,8 +219,8 @@ public class AdminController {
 
     @GetMapping("/predictions")
     @Operation(summary = "Seguimiento de pronosticos", description = "Lista y resume apuestas Colombia, pronosticos globales y campeones mundiales registrados por jugadores. Rol permitido: ADMIN.")
-    public AdminPredictionsResponse predictions() {
-        return predictionsService.listPredictions();
+    public AdminPredictionsResponse predictions(Authentication authentication) {
+        return predictionsService.listPredictions(usuarioService.getCurrentUser(authentication));
     }
 
     @GetMapping("/manual-entry/users")

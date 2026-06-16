@@ -65,6 +65,12 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
 
     @Query("""
             select p from Partido p
+            order by p.kickoffAtUtc asc
+            """)
+    List<Partido> findAllForScoring();
+
+    @Query("""
+            select p from Partido p
             where (:from is null or p.kickoffAtUtc >= :from)
               and (:to is null or p.kickoffAtUtc < :to)
             order by p.kickoffAtUtc asc

@@ -1,6 +1,11 @@
 package com.famicup.servicio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.famicup.modelo.dto.ParametrosApuestasResponse;
@@ -41,6 +46,8 @@ class AdminPredictionsServiceTest {
     private ResultadoPartidoRepository resultRepository;
     @Mock
     private BettingParametersService parametersService;
+    @Mock
+    private PredictionScoringService scoringService;
 
     private AdminPredictionsService service;
 
@@ -52,7 +59,14 @@ class AdminPredictionsServiceTest {
                 globalPredictionRepository,
                 championPredictionRepository,
                 partidoMapper,
-                parametersService);
+                parametersService,
+                scoringService);
+        lenient().when(scoringService.calculate(
+                        nullable(Integer.class),
+                        nullable(Integer.class),
+                        nullable(Integer.class),
+                        nullable(Integer.class)))
+                .thenReturn(new PredictionScoringService.ScoringDecision(0, "Pendiente de resultado", "PENDING_RESULT", false, false));
     }
 
     @Test
@@ -70,7 +84,7 @@ class AdminPredictionsServiceTest {
         when(championPredictionRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(championPrediction));
         when(resultRepository.findByMatchId(1L)).thenReturn(Optional.empty());
 
-        var response = service.listPredictions();
+        var response = service.listPredictions(null);
 
         assertThat(response.summary().totalPredictions()).isEqualTo(3);
         assertThat(response.summary().playersWithPredictions()).isEqualTo(1);
@@ -92,6 +106,47 @@ class AdminPredictionsServiceTest {
                     assertThat(item.predictionLabel()).isEqualTo("Japón");
                     assertThat(item.possiblePoints()).isEqualTo(10);
                 });
+        verify(scoringService).repairPredictionsWithResults(null, "SCORING_AUTO_REPAIR_ADMIN_PREDICTIONS_VIEW");
+    }
+
+    @Test
+    void adminPredictionsUseRepairedScoringFromCentralService() {
+        OffsetDateTime now = OffsetDateTime.parse("2026-06-13T20:00:00Z");
+        Usuario player = player();
+        Partido match = match(9L, team("SWE", "Sweden"), team("TUN", "Tunisia"));
+        PronosticoGlobal prediction = globalPrediction(player, match, now);
+        prediction.setPredictedHomeGoals(2);
+        prediction.setPredictedAwayGoals(1);
+        prediction.setPoints(0);
+        prediction.setStatus(EstadoPronostico.VALID);
+
+        when(parametersService.getParameters()).thenReturn(parameters());
+        when(colombiaBetRepository.findAllByOrderByRegisteredAtDesc()).thenReturn(List.of());
+        when(globalPredictionRepository.findAllByOrderByRegisteredAtDesc()).thenReturn(List.of(prediction));
+        when(championPredictionRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of());
+        when(resultRepository.findByMatchId(9L)).thenReturn(Optional.of(result(match, 5, 1)));
+        when(scoringService.calculate(eq(5), eq(1), eq(2), eq(1)))
+                .thenReturn(new PredictionScoringService.ScoringDecision(2, "Ganador acertado", "CALCULATED", false, true));
+        doAnswer(invocation -> {
+            prediction.setPoints(2);
+            prediction.setStatus(EstadoPronostico.EVALUATED);
+            prediction.setWinnerHit(true);
+            return null;
+        }).when(scoringService).repairPredictionsWithResults(null, "SCORING_AUTO_REPAIR_ADMIN_PREDICTIONS_VIEW");
+
+        var response = service.listPredictions(null);
+
+        assertThat(response.items()).singleElement().satisfies(item -> {
+            assertThat(item.player().fullName()).isEqualTo("Abuelo Javier");
+            assertThat(item.match().homeTeam().displayName()).isEqualTo("Suecia");
+            assertThat(item.match().awayTeam().displayName()).isEqualTo("Túnez");
+            assertThat(item.predictionLabel()).isEqualTo("2 - 1");
+            assertThat(item.resultLabel()).isEqualTo("5 - 1");
+            assertThat(item.points()).isEqualTo(2);
+            assertThat(item.adminStatus()).isEqualTo("WON");
+            assertThat(item.pointsReason()).isEqualTo("Ganador acertado");
+            assertThat(item.pointsStatus()).isEqualTo("CALCULATED");
+        });
     }
 
     private ParametrosApuestasResponse parameters() {
@@ -102,7 +157,7 @@ class AdminPredictionsServiceTest {
                 BigDecimal.valueOf(10000),
                 BigDecimal.valueOf(40000),
                 10,
-                0,
+                5,
                 2,
                 50,
                 30,
@@ -175,6 +230,14 @@ class AdminPredictionsServiceTest {
         prediction.setCreatedAt(now);
         prediction.setUpdatedAt(now);
         return prediction;
+    }
+
+    private com.famicup.modelo.entidad.ResultadoPartido result(Partido match, int homeGoals, int awayGoals) {
+        com.famicup.modelo.entidad.ResultadoPartido result = new com.famicup.modelo.entidad.ResultadoPartido();
+        result.setMatch(match);
+        result.setHomeGoals90(homeGoals);
+        result.setAwayGoals90(awayGoals);
+        return result;
     }
 
     private PronosticoCampeonMundial championPrediction(Usuario player, Equipo team, OffsetDateTime now) {
